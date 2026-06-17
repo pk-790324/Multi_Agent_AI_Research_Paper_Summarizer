@@ -1,0 +1,10 @@
+chromadb
+docling
+langchain
+loguru
+langchain-community
+ollama
+langchain-ollama
+rank-bm25
+langchain-classic
+gradio
