@@ -16,3 +16,8 @@ mem0ai
 mem0ai[nlp]
 mem0ai[extras]
 arxiv
+pymupdf
+docling
+markdown-it-py
+qdrant-client 
+langchain-qdrant

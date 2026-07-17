@@ -1,11 +1,11 @@
-from agents.search_agent import search_agent
+from agents.embedding_agent import embedding_agent
 
-response = search_agent.invoke(
+response = embedding_agent.invoke(
     {
         "messages": [
             (
                 "user",
-                "Find the paper 'Attention Is All You Need' and download its PDF.",
+                "embedd the given chunks and store in given specified locations"
             )
         ]
     }
