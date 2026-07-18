@@ -5,6 +5,7 @@ from datetime import datetime
 
 from langchain_core.tools import tool
 
+from state.state import ResearchPaperState
 
 MAX_CHUNK_SIZE = 1800
 CHUNK_OVERLAP = 200
@@ -39,31 +40,31 @@ def split_large_text(
     return chunks
 
 
+
+
 @tool
-def section_aware_chunking() -> str:
+def section_aware_chunking(
+    state: ResearchPaperState,
+) -> ResearchPaperState:
     """
-    Chunk the latest parsed markdown document.
-    Save chunks as JSON.
-    Return JSON path.
+    Chunk the parsed markdown document into section-aware chunks.
+    Save the chunks as JSON and update the shared state.
     """
 
-    parsed_dir = Path("parsed_papers")
+    markdown_path = Path(
+        state["artifacts"]["markdown_path"]
+    )
 
-    if not parsed_dir.exists():
-        return "parsed_papers directory not found."
+    if not markdown_path.exists():
+        raise FileNotFoundError(
+            f"{markdown_path} does not exist."
+        )
 
-    md_files = list(parsed_dir.glob("*.md"))
-
-    if not md_files:
-        return "No parsed markdown files found."
-
-    latest_md = max(md_files, key=lambda f: f.stat().st_mtime)
-
-    markdown = latest_md.read_text(
+    markdown = markdown_path.read_text(
         encoding="utf-8"
     )
 
-    paper_title = latest_md.stem
+    paper_title = state["paper"]["title"]
 
     pattern = r"(?=^#{1,6}\s+)"
 
@@ -88,8 +89,7 @@ def section_aware_chunking() -> str:
 
         heading = "Unknown"
 
-        if lines[0].startswith("#"):
-
+        if lines and lines[0].startswith("#"):
             heading = lines[0].replace("#", "").strip()
 
         body = "\n".join(lines[1:]).strip()
@@ -104,7 +104,7 @@ def section_aware_chunking() -> str:
                     "chunk_id": chunk_id,
                     "paper_title": paper_title,
                     "section": heading,
-                    "source_file": str(latest_md),
+                    "source_file": str(markdown_path),
                     "text": piece,
                     "char_count": len(piece),
                     "created_at": datetime.utcnow().isoformat(),
@@ -114,13 +114,15 @@ def section_aware_chunking() -> str:
             chunk_id += 1
 
     output_dir = Path("chunks")
-
     output_dir.mkdir(exist_ok=True)
 
-    output_file = output_dir / f"{paper_title}_chunks.json"
+    chunk_file = (
+        output_dir /
+        f"{markdown_path.stem}_chunks.json"
+    )
 
     with open(
-        output_file,
+        chunk_file,
         "w",
         encoding="utf-8",
     ) as f:
@@ -132,4 +134,10 @@ def section_aware_chunking() -> str:
             ensure_ascii=False,
         )
 
-    return str(output_file)
+    return {
+        **state,
+        "artifacts": {
+            **state["artifacts"],
+            "chunk_file": str(chunk_file),
+        },
+    }

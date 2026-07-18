@@ -21,3 +21,6 @@ docling
 markdown-it-py
 qdrant-client 
 langchain-qdrant
+IPython
+matplotlib
+seaborn

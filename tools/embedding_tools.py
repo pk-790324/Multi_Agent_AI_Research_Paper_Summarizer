@@ -12,123 +12,106 @@ from qdrant_client.models import (
     Distance,
 )
 
-def load_latest_chunk_file():
 
-    chunk_dir = Path("chunks")
 
-    if not chunk_dir.exists():
-        raise FileNotFoundError("chunks folder not found.")
-
-    json_files = list(chunk_dir.glob("*.json"))
-
-    if not json_files:
-        raise FileNotFoundError("No chunk json found.")
-
-    latest = max(
-        json_files,
-        key=lambda f: f.stat().st_mtime,
-    )
-
-    with open(latest, "r", encoding="utf-8") as f:
-        chunks = json.load(f)
-
-    return latest, chunks
+from state.state import ResearchPaperState
 
 
 @tool
-def index_latest_chunks() -> str:
+def index_chunks(
+    state: ResearchPaperState,
+) -> ResearchPaperState:
     """
-    Load the latest chunk JSON, create embeddings using Ollama,
+    Load the chunk JSON from the shared state,
+    generate embeddings using Ollama,
     and store them in Qdrant.
     """
 
-    latest_file, chunks = load_latest_chunk_file()
+    chunk_file = Path(
+        state["artifacts"]["chunk_file"]
+    )
+
+    if not chunk_file.exists():
+        raise FileNotFoundError(
+            f"{chunk_file} does not exist."
+        )
+
+    with open(
+        chunk_file,
+        "r",
+        encoding="utf-8",
+    ) as f:
+        chunks = json.load(f)
 
     embedding_model = OllamaEmbeddings(
         model="mxbai-embed-large:latest"
     )
+
     db_path = Path("qdrant_db")
+
     client = QdrantClient(
-    path=str(db_path)
-)
+        path=str(db_path)
+    )
 
     collection_name = "research_papers"
 
-    # ---------- Create one embedding ----------
-
-    sample = embedding_model.embed_query("hello")
+    # Determine embedding dimension
+    first_embedding = embedding_model.embed_query(
+        chunks[0]["text"]
+    )
 
     if not client.collection_exists(collection_name):
 
         client.create_collection(
             collection_name=collection_name,
             vectors_config=VectorParams(
-                size=len(sample),
+                size=len(first_embedding),
                 distance=Distance.COSINE,
             ),
         )
 
     points = []
 
-    for chunk in chunks:
+    for index, chunk in enumerate(chunks):
 
-        embedding_text = f"""
-Paper Title:
-{chunk['paper_title']}
-
-Section:
-{chunk['section']}
-
-Content:
-{chunk['text']}
-"""
-
-        embedding = embedding_model.embed_query(
-            embedding_text
-        )
+        if index == 0:
+            embedding = first_embedding
+        else:
+            embedding = embedding_model.embed_query(
+                chunk["text"]
+            )
 
         payload = {
-
             "paper_title": chunk["paper_title"],
-
             "section": chunk["section"],
-
             "chunk_id": chunk["chunk_id"],
-
             "text": chunk["text"],
-
             "char_count": chunk["char_count"],
-
             "source_file": chunk["source_file"],
-
             "created_at": chunk["created_at"],
         }
 
         points.append(
-
             PointStruct(
-
                 id=str(uuid.uuid4()),
-
                 vector=embedding,
-
                 payload=payload,
-
             )
-
         )
 
     client.upsert(
-
         collection_name=collection_name,
-
         points=points,
-
     )
 
-    return (
-        f"Indexed {len(points)} chunks "
-        f"from {latest_file.name}."
-    )
+    return {
+        **state,
+        "collection_name": collection_name,
+        "embedding": {
+            "embedding_model": "mxbai-embed-large:latest",
+            "vector_dimension": len(first_embedding),
+            "indexed_chunks": len(points),
+        },
+    }
     
     

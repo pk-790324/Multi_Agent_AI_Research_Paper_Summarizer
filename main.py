@@ -1,11 +1,11 @@
-from agents.embedding_agent import embedding_agent
+from agents.retrievers_agent import retriever_agent
 
-response = embedding_agent.invoke(
+response = retriever_agent.invoke(
     {
         "messages": [
             (
                 "user",
-                "embedd the given chunks and store in given specified locations"
+                "retrieve the methodology topic"
             )
         ]
     }

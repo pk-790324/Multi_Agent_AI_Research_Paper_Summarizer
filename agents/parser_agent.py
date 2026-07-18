@@ -1,7 +1,7 @@
 from langchain.agents import create_agent
 from langchain_ollama import ChatOllama
 
-from tools.parser_tools import parse_latest_pdf
+from tools.parser_tools import parse_pdf
 
 
 llm = ChatOllama(
@@ -11,7 +11,7 @@ llm = ChatOllama(
 
 parser_agent = create_agent(
     model=llm,
-    tools=[parse_latest_pdf],
+    tools=[parse_pdf],
     system_prompt="""
 You are the PDF Parsing Agent.
 

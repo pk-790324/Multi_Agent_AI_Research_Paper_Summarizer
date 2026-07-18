@@ -3,37 +3,47 @@ from pathlib import Path
 
 from docling.document_converter import DocumentConverter
 from langchain_core.tools import tool
+from state.state import ResearchPaperState
+
+from pathlib import Path
+
+from docling.document_converter import DocumentConverter
+from langchain_core.tools import tool
+
+from state.state import ResearchPaperState
 
 
 @tool
-def parse_latest_pdf() -> str:
+def parse_pdf(state: ResearchPaperState) -> ResearchPaperState:
     """
-    Parse the latest PDF in the papers directory using Docling.
-    Save the parsed document as Markdown and return its path.
+    Parse the downloaded PDF using Docling and save it as Markdown.
     """
 
-    papers_dir = Path("papers")
+    pdf_path = Path(state["artifacts"]["pdf_path"])
 
-    if not papers_dir.exists():
-        return "Error: papers directory does not exist."
-
-    pdf_files = list(papers_dir.glob("*.pdf"))
-
-    if not pdf_files:
-        return "Error: No PDF files found."
-
-    latest_pdf = max(pdf_files, key=lambda f: f.stat().st_mtime)
+    if not pdf_path.exists():
+        raise FileNotFoundError(f"{pdf_path} does not exist.")
 
     converter = DocumentConverter()
-    result = converter.convert(str(latest_pdf))
+
+    result = converter.convert(str(pdf_path))
 
     markdown = result.document.export_to_markdown()
 
     output_dir = Path("parsed_papers")
     output_dir.mkdir(exist_ok=True)
 
-    output_file = output_dir / f"{latest_pdf.stem}.md"
+    markdown_path = output_dir / f"{pdf_path.stem}.md"
 
-    output_file.write_text(markdown, encoding="utf-8")
+    markdown_path.write_text(
+        markdown,
+        encoding="utf-8",
+    )
 
-    return str(output_file)
+    return {
+        **state,
+        "artifacts": {
+            **state["artifacts"],
+            "markdown_path": str(markdown_path),
+        },
+    }

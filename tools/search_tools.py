@@ -3,20 +3,17 @@ import arxiv
 import os
 import requests
 
-
-# ===================================================================================================
-# ======================================= SEARCH TOOLS ==============================================
-# ===================================================================================================
-
+from state.state import ResearchPaperState
 
 @tool
-def search_arxiv(query: str) -> list[dict]:
+def search_arxiv(state:ResearchPaperState) -> ResearchPaperState:
     """
     Search arXiv for research papers based on a query.
     Returns metadata for matching papers.
     """
 
     client = arxiv.Client()
+    query=state['user_query']
 
     search = arxiv.Search(
         query=query,
@@ -37,13 +34,16 @@ def search_arxiv(query: str) -> list[dict]:
                 "entry_id": paper.entry_id,
             }
         )
+    return {**state,"paper":papers}
+        
 
-    return papers
+    
 
 
-
-def download_pdf(pdf_url: str) -> str:
+@tool
+def download_pdf(state: ResearchPaperState) -> ResearchPaperState:
     """Download an arXiv PDF and return the local path."""
+    pdf_url=state['paper'][0]['pdf_url']
 
     # Convert abstract URL to PDF URL
     pdf_url = pdf_url.replace("/abs/", "/pdf/")
@@ -65,7 +65,13 @@ def download_pdf(pdf_url: str) -> str:
     with open(filepath, "wb") as f:
         f.write(response.content)
 
-    return filepath
+    return {
+        **state,
+        "artifacts": {
+            **state.get("artifacts", {}),
+            "pdf_path": filepath,
+        },
+    }
 
 
 

@@ -2,7 +2,7 @@ from langchain.agents import create_agent
 from langchain_ollama import ChatOllama
 
 from tools.embedding_tools import (
-    index_latest_chunks,
+    index_chunks,
 )
 
 llm = ChatOllama(
@@ -13,7 +13,7 @@ llm = ChatOllama(
 embedding_agent = create_agent(
     model=llm,
     tools=[
-        index_latest_chunks,
+        index_chunks,
     ],
     system_prompt="""
 You are the Embedding Agent.
