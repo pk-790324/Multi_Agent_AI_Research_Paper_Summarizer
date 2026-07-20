@@ -4,6 +4,7 @@ class ResearchPaperState(TypedDict):
     user_query: str
     paper: list
     artifacts: dict
+    chunks:list
     collection_name: str
     
     

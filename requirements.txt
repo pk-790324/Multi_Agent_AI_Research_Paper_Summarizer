@@ -24,3 +24,4 @@ langchain-qdrant
 IPython
 matplotlib
 seaborn
+langchain-groq

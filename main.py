@@ -1,14 +1,6 @@
-from agents.retrievers_agent import retriever_agent
+from graphs.ingestion_graphs import ingestion_graph
 
-response = retriever_agent.invoke(
-    {
-        "messages": [
-            (
-                "user",
-                "retrieve the methodology topic"
-            )
-        ]
-    }
-)
-
-print(response)
+input_state = {
+        "user_query": "https://arxiv.org/abs/2607.16112"
+}
+result=ingestion_graph.invoke(input_state)

@@ -1,13 +1,10 @@
 from langchain.agents import create_agent
-from langchain_ollama import ChatOllama
+
 
 from tools.retrievers_tools import retrieve_documents
+from llm.llm import llm
 
 
-llm = ChatOllama(
-    model="minimax-m3:cloud",
-    temperature=0,
-)
 
 retriever_agent = create_agent(
     model=llm,
