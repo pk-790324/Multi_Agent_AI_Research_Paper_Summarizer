@@ -1,4 +1,4 @@
-from typing_extensions import TypedDict,Any
+from typing_extensions import TypedDict,Any,List
 
 class ResearchPaperState(TypedDict):
     user_query: str
@@ -9,16 +9,24 @@ class ResearchPaperState(TypedDict):
     
     
 
-class QAState(TypedDict):
 
-    question:str
 
-    collection_name:str
 
-    paper:dict
+class ResearchState(TypedDict):
 
-    retrieved_context:list
+    # User input
+    user_query: str
 
-    answer:str
-    
-    
+    # Retrieval
+    retrieved_docs: List
+
+    # Agent outputs
+    analysis: str
+    critique: str
+
+    # Orchestration
+    next_agent: str
+    retrieval_count: int
+
+    # Final response
+    final_answer: str
