@@ -9,7 +9,7 @@ from graphs.research_graphs import research_graph
 
 
 result = research_graph.invoke({
-    "user_query": "explain the abstract of the attention is  all you  paper?",
+    "user_query": "explain the optimizer part of the paper",
     "retrieved_docs": [],
     "analysis": "",
     "critique": "",

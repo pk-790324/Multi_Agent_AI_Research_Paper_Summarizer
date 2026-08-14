@@ -35,7 +35,11 @@ INSTRUCTIONS:
 8. Structure the answer clearly.
 9. When possible, mention the paper section or page information
    available in the retrieved metadata.
-10. Do not mention the internal agents or orchestration process.
+10. If supporting background from cited works is included in the evidence,
+    explicitly mention the short author-style reference names such as
+    Bahdanau et al., Hochreiter & Schmidhuber, Sutskever et al., or similar,
+    instead of raw numbers.
+11. Do not mention the internal agents or orchestration process.
 
 
 FINAL ANSWER:
@@ -73,11 +77,19 @@ def synthesizer_agent(state:ResearchState):
             "Unknown"
         )
 
+        citation_ids = metadata.get("citation_ids", [])
+        citation_labels = metadata.get("citation_labels", [])
+        citation_text = ""
+        if citation_labels:
+            citation_text = f"\nCitations: [{', '.join(str(v) for v in citation_labels)}]"
+        elif citation_ids:
+            citation_text = f"\nCitations: [{', '.join(str(v) for v in citation_ids)}]"
+
         context_parts.append(
             f"""
 Paper: {paper_title}
 Section: {section}
-Page: {page}
+Page: {page}{citation_text}
 
 Content:
 {doc.page_content}

@@ -28,10 +28,26 @@ def analyst_agent(state: ResearchState):
     print("ANALYST AGENT")
     print("=" * 60)
 
-    context = "\n\n".join(
-        doc.page_content
-        for doc in state["retrieved_docs"]
-    )
+    MAX_CONTEXT_DOCS = 5
+    MAX_CONTEXT_CHARS = 3500
+
+    docs = state["retrieved_docs"][:MAX_CONTEXT_DOCS]
+    context_parts = []
+    current_length = 0
+
+    for doc in docs:
+        content = doc.page_content.strip()
+        if not content:
+            continue
+        if current_length + len(content) > MAX_CONTEXT_CHARS:
+            remaining = MAX_CONTEXT_CHARS - current_length
+            if remaining <= 100:
+                break
+            content = content[:remaining]
+        context_parts.append(content)
+        current_length += len(content)
+
+    context = "\n\n".join(context_parts)
 
     chain = analyst_prompt | llm
 

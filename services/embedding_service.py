@@ -90,7 +90,22 @@ class EmbeddingService:
         )
 
         # -----------------------------------------
-        # 6. Generate embeddings
+        # 6. Ensure section-based indexing exists
+        # -----------------------------------------
+
+        for field_name in ["section", "paper_title", "chunk_id"]:
+            try:
+                client.create_payload_index(
+                    collection_name=collection_name,
+                    field_name=field_name,
+                    field_schema="keyword",
+                )
+            except Exception:
+                # Index may already exist; ignore duplicate-index errors.
+                pass
+
+        # -----------------------------------------
+        # 7. Generate embeddings
         # -----------------------------------------
 
         points = []
@@ -102,13 +117,11 @@ class EmbeddingService:
             embedding = embedding_model.embed_query(text)
 
             # -------------------------------------
-            # 7. Metadata / Payload
+            # 8. Flat payload for filterable metadata
             # -------------------------------------
 
             payload = {
-            "page_content": chunk["text"],
-
-            "metadata": {
+                "page_content": chunk["text"],
                 "paper_title": chunk["paper_title"],
                 "section": chunk["section"],
                 "chunk_id": chunk["chunk_id"],
@@ -116,10 +129,9 @@ class EmbeddingService:
                 "source_file": chunk["source_file"],
                 "created_at": chunk["created_at"],
             }
-        }
 
             # -------------------------------------
-            # 8. Create Qdrant point
+            # 9. Create Qdrant point
             # -------------------------------------
 
             point = PointStruct(

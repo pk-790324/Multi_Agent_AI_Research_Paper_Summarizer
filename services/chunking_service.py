@@ -7,6 +7,16 @@ from datetime import datetime
 MAX_CHUNK_SIZE = 1800
 CHUNK_OVERLAP = 200
 
+CORE_SUMMARY_SECTIONS = [
+    "Abstract",
+    "Introduction",
+    "Methodology",
+    "Experiments",
+    "Results",
+    "Discussion",
+    "Conclusion",
+]
+
 
 class ChunkingService:
 
@@ -309,6 +319,11 @@ class ChunkingService:
     # ---------------------------------------------------------
     # SECTION-AWARE CHUNKING
     # ---------------------------------------------------------
+
+    @staticmethod
+    def get_core_summary_sections() -> list[str]:
+        """Return the paper sections most useful for a high-level paper summary."""
+        return list(CORE_SUMMARY_SECTIONS)
 
     @staticmethod
     def section_aware_chunking(
