@@ -56,47 +56,55 @@ def synthesizer_agent(state:ResearchState):
     print("SYNTHESIZER AGENT")
     print("=" * 60)
 
+    # -------------------------------------------------------
+    # Truncate context to stay within Groq's free-tier limit.
+    # Budget (chars ≈ tokens * 4):
+    #   prompt template              ≈  600 chars
+    #   query + analysis + critique  ≈ 2,000 chars
+    #   evidence                     ≈ 3,000 chars
+    #   total                        ≈ 5,600 chars  < 6,000 TPM
+    # -------------------------------------------------------
+    MAX_CONTEXT_DOCS  = 8
+    MAX_CONTEXT_CHARS = 3000
+
     context_parts = []
+    used = 0
 
-    for doc in state["retrieved_docs"]:
-
+    for doc in state["retrieved_docs"][:MAX_CONTEXT_DOCS]:
         metadata = doc.metadata
 
-        paper_title = metadata.get(
-            "paper_title",
-            "Unknown"
-        )
-
-        section = metadata.get(
-            "section",
-            "Unknown"
-        )
-
-        page = metadata.get(
-            "page_number",
-            "Unknown"
-        )
-
-        citation_ids = metadata.get("citation_ids", [])
+        paper_title    = metadata.get("paper_title", "Unknown")
+        section        = metadata.get("section", "Unknown")
+        page           = metadata.get("page_number", "Unknown")
+        citation_ids   = metadata.get("citation_ids", [])
         citation_labels = metadata.get("citation_labels", [])
+
         citation_text = ""
         if citation_labels:
             citation_text = f"\nCitations: [{', '.join(str(v) for v in citation_labels)}]"
         elif citation_ids:
             citation_text = f"\nCitations: [{', '.join(str(v) for v in citation_ids)}]"
 
-        context_parts.append(
-            f"""
-Paper: {paper_title}
-Section: {section}
-Page: {page}{citation_text}
+        content = doc.page_content.strip()
+        header  = f"Paper: {paper_title}\nSection: {section}\nPage: {page}{citation_text}\n\nContent:\n"
+        entry   = header + content
 
-Content:
-{doc.page_content}
-"""
-        )
+        if used + len(entry) > MAX_CONTEXT_CHARS:
+            remaining = MAX_CONTEXT_CHARS - used
+            if remaining < 120:
+                break
+            # Keep the header and truncate only the body
+            body_budget = remaining - len(header)
+            if body_budget > 0:
+                entry = header + content[:body_budget]
+            else:
+                break
+
+        context_parts.append(entry)
+        used += len(entry)
 
     context = "\n\n".join(context_parts)
+
 
     # -----------------------------------------
     # Generate final answer

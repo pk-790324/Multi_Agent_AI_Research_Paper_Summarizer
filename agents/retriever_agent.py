@@ -1,5 +1,6 @@
 import os
 import re
+import sys
 
 from dotenv import load_dotenv
 
@@ -123,6 +124,91 @@ def detect_section(query: str):
     ):
         if keyword in query:
             return section
+
+    return None
+
+
+def normalize_paper_slug(title: str) -> str:
+    """Normalize the full paper title to a safe slug for metadata filtering.
+
+    IMPORTANT: Do NOT strip the subtitle (after ':') here — the embedding
+    service slugifies the *full* title, so we must do the same to get a match.
+    """
+    if not title:
+        return ""
+    # Remove only parenthetical suffixes, keep subtitles intact
+    base_title = title.split("(", 1)[0].strip()
+    return re.sub(r"[^a-z0-9]+", "-", base_title.lower()).strip("-")
+
+
+def infer_target_title(query: str):
+    """Infer the *full stored* paper title from natural-language queries.
+
+    The returned title must match exactly what was indexed so that
+    normalize_paper_slug() produces the correct slug for filtering.
+    """
+    q = (query or "").lower().strip()
+    if not q:
+        return None
+
+    q = re.sub(r"[^a-z0-9\s-]", " ", q)
+    q = re.sub(r"\s+", " ", q).strip()
+
+    # Map user-facing aliases to the EXACT paper_title stored in Qdrant
+    aliases = {
+        "omniscientist": "OmniScientist: An Omni-Modal Omni-Discipline AI Scientist",
+        "omni scientist": "OmniScientist: An Omni-Modal Omni-Discipline AI Scientist",
+        "omni-scientist": "OmniScientist: An Omni-Modal Omni-Discipline AI Scientist",
+        "omniscientists": "OmniScientist: An Omni-Modal Omni-Discipline AI Scientist",
+        "attention is all you need": "Attention Is All You Need",
+        "transformer": "Attention Is All You Need",
+    }
+
+    for alias, title in aliases.items():
+        if alias in q:
+            return title
+
+    return None
+
+
+def build_qdrant_filter(query: str, section: str | None = None):
+    """Build a Qdrant filter that narrows retrieval to the target paper plus an optional section."""
+    target_title = infer_target_title(query)
+    paper_conditions = []
+
+    if target_title:
+        paper_slug = normalize_paper_slug(target_title)
+        paper_conditions.append(
+            FieldCondition(
+                key="paper_slug",
+                match=MatchValue(value=paper_slug),
+            )
+        )
+
+    if section == "FULL_PAPER_SUMMARY":
+        summary_sections = ChunkingService.get_core_summary_sections()
+        section_conditions = [
+            FieldCondition(
+                key="section",
+                match=MatchValue(value=summary_section),
+            )
+            for summary_section in summary_sections
+        ]
+        if paper_conditions:
+            return Filter(must=paper_conditions, should=section_conditions)
+        return Filter(should=section_conditions)
+
+    if section:
+        section_condition = FieldCondition(
+            key="section",
+            match=MatchValue(value=section),
+        )
+        if paper_conditions:
+            return Filter(must=paper_conditions + [section_condition])
+        return Filter(must=[section_condition])
+
+    if paper_conditions:
+        return Filter(must=paper_conditions)
 
     return None
 
@@ -277,6 +363,20 @@ def retriever_agent(state):
 
     print("Query:", query)
 
+    # ---------------------------------------
+    # Infinite-loop guard
+    # If we have already retried 3 times with no results,
+    # return an empty result so the orchestrator can escape.
+    # ---------------------------------------
+
+    retrieval_count = state.get("retrieval_count", 0)
+    if retrieval_count >= 3:
+        print("[RETRIEVER] Reached max retries (3). Returning empty docs to allow synthesizer fallback.")
+        return {
+            "retrieved_docs": [],
+            "retrieval_count": retrieval_count + 1,
+        }
+
     section = detect_section(query)
 
     print("Detected section:", section)
@@ -288,70 +388,59 @@ def retriever_agent(state):
     query_vector = embedding_model.embed_query(query)
 
     # ---------------------------------------
-    # Build filter
+    # Build filters for graduated fallback:
+    #   1. paper_slug + section  (most specific)
+    #   2. paper_slug only       (drop section)
+    #   3. no filter             (pure semantic)
+    # This avoids mixing documents from unrelated papers
+    # when the target paper simply uses different section names.
     # ---------------------------------------
 
-    qdrant_filter = None
+    full_filter      = build_qdrant_filter(query, section)          # slug + section
+    paper_only_filter = build_qdrant_filter(query, None)            # slug only
+    limit = 20 if section == "FULL_PAPER_SUMMARY" else 50
 
-    if section == "FULL_PAPER_SUMMARY":
-        summary_sections = ChunkingService.get_core_summary_sections()
-        qdrant_filter = Filter(
-            should=[
-                FieldCondition(
-                    key="section",
-                    match=MatchValue(value=summary_section),
-                )
-                for summary_section in summary_sections
-            ],
-        )
-    elif section:
-        qdrant_filter = Filter(
-            must=[
-                FieldCondition(
-                    key="section",
-                    match=MatchValue(
-                        value=section
-                    ),
-                )
-            ]
-        )
-
-    # ---------------------------------------
-    # Qdrant search
-    # ---------------------------------------
-
-    try:
-        search_result = client.query_points(
-
+    def _query(q_filter):
+        return client.query_points(
             collection_name=COLLECTION_NAME,
-
             query=query_vector,
-
             using="dense",
-
-            query_filter=qdrant_filter,
-
-            limit=20 if section == "FULL_PAPER_SUMMARY" else 50,
-
+            query_filter=q_filter,
+            limit=limit,
             with_payload=True,
         )
-    except Exception as exc:
-        if qdrant_filter and (
-            "Index required but not found" in str(exc)
-            or "Bad request" in str(exc)
-            or "filter" in str(exc).lower()
-        ):
-            print("Qdrant section index/filter is missing; retrying without section filtering.")
-            search_result = client.query_points(
-                collection_name=COLLECTION_NAME,
-                query=query_vector,
-                using="dense",
-                query_filter=None,
-                limit=20 if section == "FULL_PAPER_SUMMARY" else 50,
-                with_payload=True,
-            )
-        else:
-            raise
+
+    def _safe_search():
+        """Try the full filter, fall back progressively."""
+        # Step 1: full filter (paper + section)
+        try:
+            result = _query(full_filter)
+            if result.points:
+                return result
+        except Exception as exc:
+            if "Index" in str(exc) or "Bad request" in str(exc) or "filter" in str(exc).lower():
+                print("[RETRIEVER] Filter error on full filter:", exc)
+            else:
+                raise
+
+        # Step 2: paper-slug only (drop section)
+        if paper_only_filter and paper_only_filter != full_filter:
+            print("[RETRIEVER] Full filter returned 0 results. "
+                  "Retrying with paper-slug only (no section filter).")
+            try:
+                result = _query(paper_only_filter)
+                if result.points:
+                    return result
+            except Exception:
+                pass
+
+        # Step 3: no filter (pure semantic search)
+        if full_filter is not None or paper_only_filter is not None:
+            print("[RETRIEVER] Paper filter returned 0 results. "
+                  "Retrying without any filter (semantic-only).")
+        return _query(None)
+
+    search_result = _safe_search()
 
     # ---------------------------------------
     # Convert to LangChain Documents
@@ -459,34 +548,31 @@ def retriever_agent(state):
         documents = enrich_with_cited_references(documents)
 
     # ---------------------------------------
-    # Debug
+    # Debug (unicode-safe for Windows console)
     # ---------------------------------------
 
-    print(
-        "Documents retrieved:",
-        len(documents)
-    )
+    def _safe_print(text: str) -> None:
+        """Write text to stdout safely, replacing un-encodable characters.
+
+        On Windows the default stdout encoding (cp1252) cannot represent many
+        Unicode codepoints found in academic papers (math symbols, etc.).
+        We encode to the stdout codec with 'replace' error handling and write
+        the resulting bytes directly to sys.stdout.buffer so the text always
+        reaches the console without raising UnicodeEncodeError.
+        """
+        enc = getattr(sys.stdout, "encoding", "utf-8") or "utf-8"
+        safe_bytes = (text + "\n").encode(enc, errors="replace")
+        sys.stdout.buffer.write(safe_bytes)
+        sys.stdout.buffer.flush()
+
+    _safe_print(f"Documents retrieved: {len(documents)}")
 
     for i, doc in enumerate(documents):
-
-        print(
-            f"\n--- Document {i + 1} ---"
-        )
-
-        print(
-            "Section:",
-            doc.metadata["section"]
-        )
-
-        print(
-            "Chunk:",
-            doc.metadata["chunk_id"]
-        )
-
-        print(
-            "Content:",
-            doc.page_content[:500]
-        )
+        _safe_print(f"\n--- Document {i + 1} ---")
+        _safe_print(f"Section: {doc.metadata.get('section', 'Unknown')}")
+        _safe_print(f"Chunk: {doc.metadata.get('chunk_id', 'Unknown')}")
+        snippet = doc.page_content[:500]
+        _safe_print(f"Content: {snippet}")
 
     return {
         "retrieved_docs": documents,
@@ -497,3 +583,12 @@ def retriever_agent(state):
                 0
             ) + 1,
     }
+
+
+
+
+
+
+
+
+

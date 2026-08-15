@@ -41,17 +41,41 @@ def critic_agent(state: ResearchState):
     print("CRITIC AGENT")
     print("=" * 60)
 
-    context = "\n\n".join(
-        doc.page_content
-        for doc in state["retrieved_docs"]
-    )
+    # -------------------------------------------------------
+    # Truncate context to stay within Groq's free-tier limit
+    # (llama-3.1-8b-instant: 6,000 TPM).
+    # Budget breakdown (chars ≈ tokens * 4):
+    #   prompt template + analysis + query ≈ 2,000 chars
+    #   evidence budget                   ≈ 2,000 chars
+    # -------------------------------------------------------
+    MAX_CONTEXT_DOCS  = 5
+    MAX_CONTEXT_CHARS = 2000
+    MAX_ANALYSIS_CHARS = 800
+
+    docs = state["retrieved_docs"][:MAX_CONTEXT_DOCS]
+    context_parts = []
+    used = 0
+    for doc in docs:
+        content = doc.page_content.strip()
+        if not content:
+            continue
+        if used + len(content) > MAX_CONTEXT_CHARS:
+            remaining = MAX_CONTEXT_CHARS - used
+            if remaining < 80:
+                break
+            content = content[:remaining]
+        context_parts.append(content)
+        used += len(content)
+
+    context = "\n\n".join(context_parts)
+    analysis = (state["analysis"] or "")[:MAX_ANALYSIS_CHARS]
 
     chain = critic_prompt | llm
 
     response = chain.invoke({
         "user_query": state["user_query"],
         "context": context,
-        "analysis": state["analysis"]
+        "analysis": analysis,
     })
 
     return {

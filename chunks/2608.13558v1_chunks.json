@@ -1,0 +1,272 @@
+[
+  {
+    "chunk_id": 1,
+    "paper_title": "OmniScientist: An Omni-Modal Omni-Discipline AI Scientist",
+    "section": "An Omni-Modal Omni-Discipline AI Scientist",
+    "source_file": "parsed_papers\\2608.13558v1.md",
+    "text": "Bobo Li 1, Hao Fei 2*, Tianjie Ju 1, Mong-Li Lee 1 and Wynne Hsu 1\n\n1 National University of Singapore\n\n2 University of Oxford\n\nProject page:\n\nhttps://omni-scientist.github.io\n\nSoftware &amp; Skill:\n\nhttps://github.com/Omni-Scientist/OmniScientist\n\nABSTRACT Recent advances in foundation models have enabled AI scientists to automate increasingly complete research workflows, from hypothesis generation and code execution to manuscript preparation. Yet workflow coverage alone does not provide access to the full evidence on which scientific discovery depends. Existing systems typically reason over text, code, labels, or precomputed summaries, leaving scientifically decisive spatial, temporal, cross-channel, and procedural relations unavailable to the agent. We introduce OmniScientist, an end-to-end, omni-modal AI scientist that conducts multidisciplinary research directly from heterogeneous raw evidence. A perception layer and 3 autonomous agents for ideation, experiment, and writeup operate within a deterministic pipeline, allowing observations to shape research questions, experimental decisions, and final claims throughout the research lifecycle. By running idea, rigour, and claim checks in code, the system enforces novelty screening, statistical validity, execution provenance, and numerical traceability. We evaluate OmniScientist on 36 real-data cases spanning 5 discipline families, 4 families of scientific evidence, and modalities including images, signals, audio, video, 3-D structures, trajectories, tables, formulae, and graphs. The system completes the full path from raw data to a compiled manuscript in all 36 cases and achieves a mean overall paper score of 6. 3 with the reference reasoning backbone.",
+    "char_count": 1731,
+    "created_at": "2026-08-14T15:23:58.560462"
+  },
+  {
+    "chunk_id": 2,
+    "paper_title": "OmniScientist: An Omni-Modal Omni-Discipline AI Scientist",
+    "section": "An Omni-Modal Omni-Discipline AI Scientist",
+    "source_file": "parsed_papers\\2608.13558v1.md",
+    "text": ", formulae, and graphs. The system completes the full path from raw data to a compiled manuscript in all 36 cases and achieves a mean overall paper score of 6. 3 with the reference reasoning backbone. In paired comparisons against a blind variant that receives only precomputed scalar features, direct perception improves all 7 evaluation dimensions and wins 85% of head-to-head judgments. These results show that lifecycle-wide perception is essential to the evidence-grounded scientific discovery and provides a practical path toward broadly capable AI scientists.\n\nKEYWORDS AI Scientist, Multimodal Agents, Autonomous Research, Scientific Discovery, LLM Agents, Tool Use\n\nFigure 1. Overview of the OmniScientist framework. Raw multimodal observations spanning multiple disciplines (left) are fed into a unified engine that perceives evidence, executes falsifiable experiments, and grounds every claim (center). This continuous pipeline ultimately yields verifiable scientific discoveries across various fields (right).",
+    "char_count": 1021,
+    "created_at": "2026-08-14T15:23:58.560462"
+  },
+  {
+    "chunk_id": 3,
+    "paper_title": "OmniScientist: An Omni-Modal Omni-Discipline AI Scientist",
+    "section": "Introduction",
+    "source_file": "parsed_papers\\2608.13558v1.md",
+    "text": "Recent advances in foundation models have expanded the scope of automated scientific discovery. Improvements in reasoning, code generation, and tool use (OpenAI, 2023; Anthropic, 2024; DeepSeek-AI, 2025) have moved scientific AI from task-specific systems, exemplified by protein structure prediction (Jumper et al., 2021), toward agents that coordinate hypothesis formulation, experiment execution, and scientific writing (Schmidgall et al., 2025; Yuan et al., 2025; Tang et al., 2025). At the current frontier, end-to-end systems can start from a research direction and autonomously produce candidate ideas, runnable code, experimental figures, complete manuscripts, and self-reviews (Lu et al., 2026; Yamada et al., 2025; InternAgent Team et al., 2025; Intology AI, 2025; Gottweis et al., 2026). These systems therefore cover almost the entire visible research workflow. A separate capability remains unresolved: an AI scientist must also derive defensible questions and claims from the heterogeneous observations on which science depends.\n\nScientific evidence reaches researchers in forms with markedly different internal structure. Text, formulae, sequences, and knowledge graphs encode symbolic relations, while microscopy, spectra, waveforms, audio, video, 3-D structures, distributions, and trajectories carry spatial, temporal, cross-channel, statistical, and procedural relations (Wang et al., 2023; Baltrušaitis et al., 2019; Yue et al., 2024; Li et al., 2024). All of these artifacts can be serialised into tokens or accessed through code. The decisive issue is which relations survive the interface. A caption can omit local morphology, an unordered feature vector can erase temporal order, and a small set of scalars can hide cross-channel inconsistency.",
+    "char_count": 1768,
+    "created_at": "2026-08-14T15:23:58.562461"
+  },
+  {
+    "chunk_id": 4,
+    "paper_title": "OmniScientist: An Omni-Modal Omni-Discipline AI Scientist",
+    "section": "Introduction",
+    "source_file": "parsed_papers\\2608.13558v1.md",
+    "text": "ue is which relations survive the interface. A caption can omit local morphology, an unordered feature vector can erase temporal order, and a small set of scalars can hide cross-channel inconsistency. Yet most current AI-scientist pipelines expose data through text, code, labels, or summaries prepared in advance (Lu et al., 2026; Yamada et al., 2025; Jiang et al., 2025; Schmidgall et al., 2025; Yuan et al., 2025; InternAgent Team et al., 2025). The agent therefore inherits a human-chosen representation before inquiry begins. This interface constrains the anomalies it can notice, the hypotheses it can formulate, and the claims it can support. Existing systems are increasingly workflow-complete, while remaining evidence-incomplete.\n\nStrong multimodal models do not by themselves close this gap. Scientific multimodal benchmarks usually fix the observation and the question in advance (Wang et al., 2024; Roberts et al., 2024; Pramanick et al., 2024; Li et al., 2024), while scientific agents that use perception generally invoke it at a local stage, such as inspecting generated figures, scoring plots, reading an interface, or monitoring an apparatus (Yamada et al., 2025; Gandhi et al., 2025; Sun et al., 2026; Darvish et al., 2025; Mandal et al., 2025). Such uses can improve an isolated decision, yet they do not establish a research loop in which an observation can redirect the study. In a perception-driven AI scientist, raw evidence should influence which question is selected, how the experiment is designed, what is examined after execution, and which statements are admitted to the final manuscript. A broader observation and search space also enlarges the room for data leakage, repeated testing, hypothesising after results are known (HARKing), and unsupported reporting.",
+    "char_count": 1792,
+    "created_at": "2026-08-14T15:23:58.562461"
+  },
+  {
+    "chunk_id": 5,
+    "paper_title": "OmniScientist: An Omni-Modal Omni-Discipline AI Scientist",
+    "section": "Introduction",
+    "source_file": "parsed_papers\\2608.13558v1.md",
+    "text": "d to the final manuscript. A broader observation and search space also enlarges the room for data leakage, repeated testing, hypothesising after results are known (HARKing), and unsupported reporting. Lifecycle-wide perception therefore needs a control structure that preserves provenance and enforces statistical and factual constraints.\n\nTo meet these requirements, we introduce OmniScientist (cf. Figure 1), an end-to-end, omni-modal AI scientist for multidisciplinary discovery. A task is specified by a dataset, a scientific subject, and a target property, together with the raw artifacts referenced by that specification. OmniScientist coordinates a perception layer with 3 autonomous agents for ideation, experiment, and writeup (Figure 3). Within each stage, a ReAct loop interleaves observation, reasoning, and action (Yao et al., 2023; Shinn et al., 2023; Schick et al., 2023), allowing evidence to shape question formation, experimental design, result inspection, and scientific argumentation. Around these open-ended agents, a thin deterministic pipeline controls stage transitions, returns to ideation when an experiment collapses or yields a null result, and admits each stage output only after a check enforced in code. The idea, rigour, and claim checks examine novelty evidence and falsifiability, leakage and effective sample size, execution provenance and multiple comparisons, anti-HARKing constraints, numerical traceability, and claim support. We further organise scientific evidence into 4 discipline-independent families, namely perceptual, symbolic, quantitative-statistical, and procedural evidence (cf. Table 2). The same engine can consequently operate on a seismogram, a CAD mesh, or a knowledge graph.",
+    "char_count": 1731,
+    "created_at": "2026-08-14T15:23:58.562461"
+  },
+  {
+    "chunk_id": 6,
+    "paper_title": "OmniScientist: An Omni-Modal Omni-Discipline AI Scientist",
+    "section": "Introduction",
+    "source_file": "parsed_papers\\2608.13558v1.md",
+    "text": "dent families, namely perceptual, symbolic, quantitative-statistical, and procedural evidence (cf. Table 2). The same engine can consequently operate on a seismogram, a CAD mesh, or a knowledge graph. Adding a discipline requires a new specification file, with no change to the core pipeline and no domain-specific research code.\n\nWe evaluate OmniScientist on a 36-case demonstration suite spanning 5 discipline families, all 4 evidence families, and modalities ranging from images and waveforms to audio, video, 3-D structures, trajectories, tables, formulae, and graphs (Table 1). The system completes the full path from raw data to a compiled paper in all 36 cases. With the reference reasoning backbone, the generated papers receive a mean overall score of 6. 3 on a 7-dimensional rubric scored by 2 cross-family judges, and paper quality remains broadly consistent across evidence modalities (Tables 3 and 5). We then isolate the contribution of perception by comparing the full system with a blind variant that receives precomputed scalar features and never accesses the raw observation. Full perception improves every evaluated dimension, with the largest gains in multimodal grounding and scientific significance, and its papers win 85% of the head-to-head judgments (Figure 7). The gains appear in the scientific substance of the papers: the questions selected, the analyses executed, and the claims supported by the resulting evidence.\n\nIn summary, our main contributions are as follows:\n\n- We present OmniScientist, an end-to-end, omni-modal, and discipline-agnostic AI scientist that works directly from heterogeneous scientific evidence.",
+    "char_count": 1650,
+    "created_at": "2026-08-14T15:23:58.562461"
+  },
+  {
+    "chunk_id": 7,
+    "paper_title": "OmniScientist: An Omni-Modal Omni-Discipline AI Scientist",
+    "section": "Introduction",
+    "source_file": "parsed_papers\\2608.13558v1.md",
+    "text": "summary, our main contributions are as follows:\n\n- We present OmniScientist, an end-to-end, omni-modal, and discipline-agnostic AI scientist that works directly from heterogeneous scientific evidence. It extends automated discovery beyond workflow coverage by keeping spatial, temporal, statistical, and procedural relations available throughout the research process.\n- We propose a perception-first, multi-agent architecture where raw observations actively guide ideation, experimentation, and manuscript generation. Furthermore, we integrate code-enforced checks across the pipeline to screen for novelty, ensure statistical validity and execution provenance, prevent HARKing, and guarantee that all reported claims are traceable and supported by evidence.\n- We establish a 36-case demonstration suite across 5 discipline families and 4 families of scientific evidence. The 36 completed end-to-end runs, together with backbone comparisons and a paired blind ablation, demonstrate broad cross-disciplinary applicability and show that direct perception is essential to the evidence-grounded scientific discovery.",
+    "char_count": 1112,
+    "created_at": "2026-08-14T15:23:58.562461"
+  },
+  {
+    "chunk_id": 8,
+    "paper_title": "OmniScientist: An Omni-Modal Omni-Discipline AI Scientist",
+    "section": "2.1 Autonomous agents for scientific discovery",
+    "source_file": "parsed_papers\\2608.13558v1.md",
+    "text": "Autonomous agents are increasingly participating in scientific discovery. Early frameworks targeted one domain and one instrument, executing laboratory procedures or choosing the next synthesis from diffraction patterns (Boiko et al., 2023; Szymanski et al., 2023). Later systems widened to real scientific data across disciplines, proposing hypotheses that were subsequently validated at the bench (Mitchener et al., 2025; Villaescusa-Navarro et al., 2025; Swanson et al., 2025; Gottweis et al., 2026; Ghareeb et al., 2026). A parallel wave automated the entire research lifecycle on software repositories, from idea generation to a drafted and self-reviewed manuscript, with an improved numerical metric as the measure of success (Lu et al., 2026; Yamada et al., 2025; Jiang et al., 2025; Schmidgall et al., 2025; Yuan et al., 2025; InternAgent Team et al., 2025), most recently embedding that pipeline in a collaborative ecosystem (Shao et al., 2025). Despite these advances, current agents attend only to what a person has already turned into text, code, or a number, and overlook the raw evidence itself. As a result, almost every benchmark grades the artifacts a system produces and never what it can perceive (Chan et al., 2025; Starace et al., 2025; Chen et al., 2025; Wei et al., 2025). We therefore build an AI scientist that perceives the raw observation directly, across the 4 families of scientific evidence in Table 2.",
+    "char_count": 1432,
+    "created_at": "2026-08-14T15:23:58.562461"
+  },
+  {
+    "chunk_id": 9,
+    "paper_title": "OmniScientist: An Omni-Modal Omni-Discipline AI Scientist",
+    "section": "2.2 Multimodal perception for science",
+    "source_file": "parsed_papers\\2608.13558v1.md",
+    "text": "General multimodal models already provide strong perceptual capability, through contrastive image-text pretraining (Radford et al., 2021) and instruction-following vision-language models (Alayrac et al., 2022; Liu et al., 2023). Scientific benchmarks have measured that capability on published charts and figures (Wang et al., 2024; Roberts et al., 2024; Pramanick et al., 2024; Li et al., 2024), on microscopy and materials observations (Lozano et al., 2024; Burgess et al., 2025; Alampara et al., 2025; Zhou et al., 2025), and on experiment video and bioacoustics (Xu et al., 2025; Robinson et al., 2025). Yet they treat perception as a standalone question-answering skill, with a human selecting the observation, posing the question, and judging the response. Even MicroVQA scores hypothesis generation and experiment proposal against fixed choices, and instrument-specific and pathology models remain predictors for tasks defined in advance (Chen et al., 2024). Scientific agents apply perception more directly, though only at isolated stages, inspecting their own figures (Yamada et al., 2025), scoring generated plots (Gandhi et al., 2025), reading a software interface (Sun et al., 2026), watching an apparatus mid-experiment (Darvish et al., 2025), or driving a microscope from fixed thresholds (Mandal et al., 2025). A few systems let observations inform claim formation (Yao et al., 2025; Zhao et al., 2026), though perception still plays a local and fragmented role in the research process. OmniScientist makes perception active at every stage, from forming the question to grounding the claims in the finished paper.",
+    "char_count": 1628,
+    "created_at": "2026-08-14T15:23:58.562461"
+  },
+  {
+    "chunk_id": 10,
+    "paper_title": "OmniScientist: An Omni-Modal Omni-Discipline AI Scientist",
+    "section": "2.3 Agentic reasoning and orchestration",
+    "source_file": "parsed_papers\\2608.13558v1.md",
+    "text": "Discipline: Physical sciences 𝑁: 5 cases\nDiscipline: Condensed matter / nano Representative dataset: NFFA-EUROPE (Aversa et al., 2018) Evidence: eye Modality: image 𝑁: 2,655\nDiscipline: Vibrational spectroscopy Representative dataset: RRUFF (Lafuente et al., 2015) Evidence: eye Modality: chart-area 𝑁: 2,000\nDiscipline: Materials informatics Representative dataset: UCI superconductor (Hamidieh, 2018) Evidence: chart-bar Modality: table 𝑁: 21,263\nDiscipline: Molecular chemistry Representative dataset: PubChem (Kim et al., 2025) Evidence: eye Modality: image 𝑁: 30\nDiscipline: Symbolic regression Representative dataset: Feynman (Udrescu and Tegmark, 2020) Evidence: code Modality: superscript 𝑁: 12\nDiscipline: Earth &space 𝑁: 9 cases\nDiscipline: Remote sensing Representative dataset: EuroSAT (Helber et al., 2019) Evidence: eye Modality: image 𝑁: 5,000\nDiscipline: Galaxy morphology Representative dataset: Galaxy Zoo (Lintott et al., 2008) Evidence: eye Modality: image 𝑁: 1,000\nDiscipline: Galaxy cross-survey Representative dataset: GZ DECaLS (Walmsley et al., 2022) Evidence: eye Modality: image 𝑁: 210\nDiscipline: Gravitational waves Representative dataset: GWOSC (LIGO-Virgo Collaboration, 2021) Evidence: eye Modality: wave-square 𝑁: 1,500\nDiscipline: Seismology Representative dataset: STEAD (Mousavi et al., 2019) Evidence: eye Modality: wave-square 𝑁: 1,500\nDiscipline: Marine biology Representative dataset: WHOI-Plankton (Orenstein et al., 2015) Evidence: eye Modality: image 𝑁: 3,000\nDiscipline: Geology / petrophysics Representative dataset: Digital Rocks (Prodanovi´ c et al., 2015) Evidence: eye Modality: cube 𝑁: 375\nDiscipline: Meteorology Representative dataset: SEVIR (Veillette et al., 2020) Evidence: eye Modality: video 𝑁: 384\nDiscipline: Cyclone dynamics Representative",
+    "char_count": 1799,
+    "created_at": "2026-08-14T15:23:58.564462"
+  },
+  {
+    "chunk_id": 11,
+    "paper_title": "OmniScientist: An Omni-Modal Omni-Discipline AI Scientist",
+    "section": "2.3 Agentic reasoning and orchestration",
+    "source_file": "parsed_papers\\2608.13558v1.md",
+    "text": "15) Evidence: eye Modality: cube 𝑁: 375\nDiscipline: Meteorology Representative dataset: SEVIR (Veillette et al., 2020) Evidence: eye Modality: video 𝑁: 384\nDiscipline: Cyclone dynamics Representative dataset: IBTrACS (Knapp et al., 2010) Evidence: stream Modality: route 𝑁: 400\nDiscipline: Life &medical 𝑁: 7 cases\nDiscipline: Pathology Representative dataset: Kather CRC (Kather et al., 2016) Evidence: eye Modality: image 𝑁: 5,000\nDiscipline: Radiology Representative dataset: Chest X-ray (Kermany et al., 2018) Evidence: eye Modality: image 𝑁: 3,000\nDiscipline: Medical imaging Representative dataset: MedMNIST CT (Yang et al., 2023a) Evidence: eye Modality: cube 𝑁: 1,496\nDiscipline: Cardiology Representative dataset: CinC 2016 (Liu et al., 2016) Evidence: eye Modality: volume-up 𝑁: 2,000\nDiscipline: Sleep neuroscience Representative dataset: Sleep-EDF (Kemp et al., 2000) Evidence: eye Modality: wave-square 𝑁: 1,520\nDiscipline: Cell biology Representative dataset: Cell Tracking Ch. (Ulman et al., 2017) Evidence: eye Modality: video 𝑁: 280\nDiscipline: Genomics Representative dataset: DNA (H3) (Nguyen et al., 2016) Evidence: code Modality: dna 𝑁: 10,000\nDiscipline: Agricultural &ecological 𝑁: 8 cases\nDiscipline: Plant pathology Representative dataset: PlantVillage (Hughes and Salathé, 2015) Evidence: eye Modality: image 𝑁: 3,002\nDiscipline: Precision agriculture Representative dataset: Indian Pines (Baumgardner et al., 2015) Evidence: eye Modality: chart-area 𝑁: 2,000\nDiscipline: Animal behavior Representative dataset: CalMS21 (Sun et al., 2021) Evidence: eye Modality: image 𝑁: 2,500\nDiscipline: Ecoacoustics Representative dataset: Bird Audio Det.",
+    "char_count": 1668,
+    "created_at": "2026-08-14T15:23:58.564462"
+  },
+  {
+    "chunk_id": 12,
+    "paper_title": "OmniScientist: An Omni-Modal Omni-Discipline AI Scientist",
+    "section": "2.3 Agentic reasoning and orchestration",
+    "source_file": "parsed_papers\\2608.13558v1.md",
+    "text": "art-area 𝑁: 2,000\nDiscipline: Animal behavior Representative dataset: CalMS21 (Sun et al., 2021) Evidence: eye Modality: image 𝑁: 2,500\nDiscipline: Ecoacoustics Representative dataset: Bird Audio Det. (Stowell et al., 2019) Evidence: eye Modality: volume-up 𝑁: 2,000\nDiscipline: Marine bioacoustics Representative dataset: Watkins MMSD(Sayigh et al., 2016) Evidence: eye Modality: volume-up 𝑁: 1,697\nDiscipline: Plant phenotyping Representative dataset: Pheno4D (Schunck et al., 2021) Evidence: eye Modality: cube 𝑁: 223\nDiscipline: Fisheries Representative dataset: Caltech Fish (Kay et al., 2022) Evidence: eye Modality: video 𝑁: 120\nDiscipline: Movement ecology Representative dataset: White-stork GPS (Flack et al., 2016) Evidence: stream Modality: route 𝑁: 49\nDiscipline: Engineering &information 𝑁: 7 cases\nDiscipline: Mechanical / mfg. Representative dataset: MCB (Kim et al., 2020) Evidence: eye Modality: cube 𝑁: 1,500\nDiscipline: Civil / surveying Representative dataset: SemanticKITTI (Behley et al., 2019) Evidence: eye Modality: cube 𝑁: 1,200\nDiscipline: Robotics / driving Representative dataset: comma2k19 (Schäfer et al., 2018) Evidence: eye Modality: image 𝑁: 3,000\nDiscipline: Industrial acoustics Representative dataset: MIMII (Purohit et al., 2019) Evidence: eye Modality: volume-up 𝑁: 1,784\nDiscipline: Traffic / transportation Representative dataset: NGSIM (U.S. DOT FHWA, 2016) Evidence: stream Modality: route 𝑁: 209\nDiscipline: Scientific computing Representative dataset: PDEBench (Takamoto et al., 2022) Evidence: chart-bar Modality: border-all 𝑁: 1,500\nDiscipline: Knowledge engineering Representative dataset: ogbl-biokg (Hu et al., 2020) Evidence: code Modality: project-diagram 𝑁: 5,088,434",
+    "char_count": 1721,
+    "created_at": "2026-08-14T15:23:58.564462"
+  },
+  {
+    "chunk_id": 13,
+    "paper_title": "OmniScientist: An Omni-Modal Omni-Discipline AI Scientist",
+    "section": "2.3 Agentic reasoning and orchestration",
+    "source_file": "parsed_papers\\2608.13558v1.md",
+    "text": "ge engineering Representative dataset: ogbl-biokg (Hu et al., 2020) Evidence: code Modality: project-diagram 𝑁: 5,088,434",
+    "char_count": 121,
+    "created_at": "2026-08-14T15:23:58.564462"
+  },
+  {
+    "chunk_id": 14,
+    "paper_title": "OmniScientist: An Omni-Modal Omni-Discipline AI Scientist",
+    "section": "3.1 Scientific evidence",
+    "source_file": "parsed_papers\\2608.13558v1.md",
+    "text": "Evidence family: Perceptual Typical artifacts: Images, video, micrographs, radar, astronomical and remote-sensing imagery, the visual form of scientific plots, audio, and 3-D structure.\nEvidence family: Symbolic Typical artifacts: Natural-language documents, formulae, variables, rules, sequences, knowledge graphs, logical and causal relations, mathematical models.\nEvidence family: Quantitative-statistical Typical artifacts: Tables, measurements, distributions, curves, correlations, significance tests, regression results.\nEvidence family: Procedural / dynamic Typical artifacts: Experimental steps, code execution, agent traces, simulations, dynamic evolution, protocols.",
+    "char_count": 676,
+    "created_at": "2026-08-14T15:23:58.564462"
+  },
+  {
+    "chunk_id": 15,
+    "paper_title": "OmniScientist: An Omni-Modal Omni-Discipline AI Scientist",
+    "section": "3.2 Task setting and demonstration suite",
+    "source_file": "parsed_papers\\2608.13558v1.md",
+    "text": "A task is presented to the system as a single specification file that details a dataset, a scientific subject, and a target property, alongside the corresponding raw data. Based on these inputs, the system is instructed to produce an evidence-grounded paper. Nothing else is supplied, and the specific methodology is left entirely to the agent. To evaluate this task formulation across disciplines, we assemble a demonstration suite comprising 5 top-level discipline categories and 36 second-level cases (Table 1). Each case utilizes one real, publicly downloadable dataset with a canonical citation. The suite ranges in scale from 12 symbolic-regression equations to a biomedical knowledge graph with 5 million edges, incorporating images, spectra, waveforms, audio, video, 3-D structures, tables, and symbolic graphs. All 4 aforementioned evidence families are represented. The perceptual family accounts for 28 of the 36 cases, reflecting the natural prevalence of image, signal, audio, video, and 3-D data in the selected disciplines. The remaining 8 cases from the symbolic, quantitative-statistical, and procedural families serve as breadth controls for settings where visual inspection contributes little and a text-only baseline is already expected to perform strongly.\n\nThis comprehensive suite enables rigorous testing of the engine's domain agnosticism. Expanding to a new discipline requires merely writing an additional specification file. The underlying engine remains entirely unchanged; the identical perception, ideation, experimentation, and write-up loop operates seamlessly on a seismogram, a CAD mesh, or a knowledge graph without a single line of domain-specific code. Section E reproduces one such file in full.",
+    "char_count": 1734,
+    "created_at": "2026-08-14T15:23:58.565462"
+  },
+  {
+    "chunk_id": 16,
+    "paper_title": "OmniScientist: An Omni-Modal Omni-Discipline AI Scientist",
+    "section": "3.2 Task setting and demonstration suite",
+    "source_file": "parsed_papers\\2608.13558v1.md",
+    "text": "ion, experimentation, and write-up loop operates seamlessly on a seismogram, a CAD mesh, or a knowledge graph without a single line of domain-specific code. Section E reproduces one such file in full. Finally, Table 4 reports the end-to-end runs enabled by this unified framework, quantitatively evaluating the true extent of the system's cross-disciplinary capabilities.",
+    "char_count": 371,
+    "created_at": "2026-08-14T15:23:58.565462"
+  },
+  {
+    "chunk_id": 17,
+    "paper_title": "OmniScientist: An Omni-Modal Omni-Discipline AI Scientist",
+    "section": "The OmniScientist framework",
+    "source_file": "parsed_papers\\2608.13558v1.md",
+    "text": "In this section, we introduce the OmniScientist framework, an end-to-end AI scientist consisting of a perception layer and 3 autonomous agents for ideation, experiment, and writeup (Figure 3).",
+    "char_count": 192,
+    "created_at": "2026-08-14T15:23:58.565462"
+  },
+  {
+    "chunk_id": 18,
+    "paper_title": "OmniScientist: An Omni-Modal Omni-Discipline AI Scientist",
+    "section": "4.1 Perception layer",
+    "source_file": "parsed_papers\\2608.13558v1.md",
+    "text": "To function effectively, a multimodal AI scientist must perceive raw artifacts directly, upstream of any precomputed summaries. The perception layer supplies this grounding by organizing observations hierarchically. First, artifacts are categorized into an evidence family based on the reasoning paradigms they require. Within a given family, a specific modality defines the artifact's exact representation (e.g., images, tables, or time-series signals), which the agent inspects using registered tools. Figure 4 illustrates the raw observations processed by the agent across 16 disciplines and 11 modalities, covering all 4 evidence families, along with the discoveries derived from this direct reading.\n\nTo balance thorough analysis with computational efficiency, the framework governs when and how the agent inspects raw data. Rather than immediately rendering visual plots, the agent prioritizes native numeric analysis by extracting key properties, such as FFT peaks or trend points, directly from the raw artifacts. Visual rendering is invoked only when spatial or structural patterns are essential. Furthermore, visual perception is budget-constrained to prevent unnecessary processing and enforce targeted inspection. Ultimately, the task context dynamically determines whether native numeric features, visual representations, or both are utilized, ensuring flexible perception without relying on hardcoded heuristics. Section D lists the tools this suite exposed, the modality that unlocks each one, and how heavily each was used across the suite.\n\nFigure 3. Architecture of the OmniScientist framework. At the top, raw evidence from multiple disciplines enters the system, categorized into four evidence families (perceptual, symbolic, quantitative, and procedural) and 12 modalities.",
+    "char_count": 1794,
+    "created_at": "2026-08-14T15:23:58.565462"
+  },
+  {
+    "chunk_id": 19,
+    "paper_title": "OmniScientist: An Omni-Modal Omni-Discipline AI Scientist",
+    "section": "4.1 Perception layer",
+    "source_file": "parsed_papers\\2608.13558v1.md",
+    "text": "ientist framework. At the top, raw evidence from multiple disciplines enters the system, categorized into four evidence families (perceptual, symbolic, quantitative, and procedural) and 12 modalities. The core pipeline consists of three sequential stages. First, the Ideation stage (left) observes materials, searches literature, and formulates falsifiable hypotheses. Next, the Experiment stage (center) designs tests, executes code, and inspects results to generate an execution record containing standard output, figures, data, and configurations. Finally, the Writeup stage (right) selects, grounds, and reports claims supported exclusively by the execution record to compile the final paper. At the bottom, a lifecycle-wide perception layer provides spatial, temporal, cross-channel, statistical, and dynamic analysis capabilities. Dashed arrows indicate that these perception tools are available to all three stages of the pipeline.",
+    "char_count": 938,
+    "created_at": "2026-08-14T15:23:58.565462"
+  },
+  {
+    "chunk_id": 20,
+    "paper_title": "OmniScientist: An Omni-Modal Omni-Discipline AI Scientist",
+    "section": "4.2 Ideation",
+    "source_file": "parsed_papers\\2608.13558v1.md",
+    "text": "The ideation stage requires the agent to formulate a concrete, novel, and falsifiable question that can be answered computationally from the supplied data. Driven by a ReAct (Yao et al., 2023) loop, the agent autonomously sequences its discovery process. It begins by establishing grounding through an inventory of the materials and a decision on whether to inspect raw observations (Section 4.1). It then contextualizes these findings by searching the literature through OpenAlex (Priem et al., 2022) with Crossref (Hendricks et al., 2020) as a fallback. Building on this context, the agent develops at least 5 candidate ideas, assesses the novelty risk and feasibility for each, and selects the strongest candidate to finalize.\n\nBecause large language models are prone to hallucination and overconfidence, the stage output must pass a code-enforced check before it can be finalised. The check validates structural completeness by requiring a clear research question, hypothesis, experiment sketch, and falsification criterion. It verifies the thoroughness of the generation process by checking for the 5 self-filtered candidates and at least 3 focused literature searches. The proposed study must be executable in code and must not require a physical experiment. The system also requires leakage checks, effective-sample estimates, and visual audits to prevent methodological flaws. Furthermore, since a single bounded search cannot establish absolute priority, the system automatically tempers overconfident assertions by rewriting terms like fi rst or never explored to appears under-explored based on this search. Section B states the loop this check terminates, lists every condition the 3 checks enforce, and reports which of them actually fired across the 36 runs.",
+    "char_count": 1772,
+    "created_at": "2026-08-14T15:23:58.565462"
+  },
+  {
+    "chunk_id": 21,
+    "paper_title": "OmniScientist: An Omni-Modal Omni-Discipline AI Scientist",
+    "section": "4.3 Experiment",
+    "source_file": "parsed_papers\\2608.13558v1.md",
+    "text": "During experimentation, the agent autonomously translates the finalized idea into a methodological design and implements it through iterative code generation. It relies on a controlled run\\_python environment that manages subprocess execution and figure capture. The agent operates in a continuous debugging loop, analyzing",
+    "char_count": 323,
+    "created_at": "2026-08-14T15:23:58.566460"
+  },
+  {
+    "chunk_id": 22,
+    "paper_title": "OmniScientist: An Omni-Modal Omni-Discipline AI Scientist",
+    "section": "Perception is where discovery begins",
+    "source_file": "parsed_papers\\2608.13558v1.md",
+    "text": "16 cases, 11 modalities, all 4 evidence families. The red box marks what the agent read on the raw record; every result below it is the verified finding that observation led to.\n\nFigure 4. Raw observations and derived discoveries processed by the perception layer across 16 cases, 11 modalities, and all 4 evidence families. The figure presents a four-by-four grid of artifacts, each taken from that case's own data exactly as the run received it, with the discipline named at the top left of every panel and the modality at the top right. Within each artifact, a red bounding box marks the specific feature flagged by the agent on the raw record. Below the artifact, the saw label reports the direct observation made by the agent, and the found label details the verified experimental result produced by that observation. The first three rows cover perceptual and procedural evidence, spanning images, spectra, signals, audio, video, three-dimensional structures, and trajectories. The bottom row presents quantitative and symbolic evidence, where the layer reads the native numeric structure of a table, a formula, a sequence, or a graph instead of rendering an image.\n\nFigure 5. Two-stage verification pipeline for experimental results and manuscript claims. In the top row from left to right, an unverified experimental result undergoes a rigour check that verifies real execution, accounts for all tests, tests for independence and leakage, and ensures the headline belongs to supported analyses. If a check fails, unsupported analyses are traced and null results trigger re-ideation. Successful validation yields a verified result with certified metrics and attached provenance. Further right, a claim check matches reported numbers ( 𝑛 1...",
+    "char_count": 1747,
+    "created_at": "2026-08-14T15:23:58.566460"
+  },
+  {
+    "chunk_id": 23,
+    "paper_title": "OmniScientist: An Omni-Modal Omni-Discipline AI Scientist",
+    "section": "Perception is where discovery begins",
+    "source_file": "parsed_papers\\2608.13558v1.md",
+    "text": "aced and null results trigger re-ideation. Successful validation yields a verified result with certified metrics and attached provenance. Further right, a claim check matches reported numbers ( 𝑛 1... 𝑛 𝑘 ) to recorded outputs and reported claims ( 𝐶 1... 𝐶 𝑚 ) to recorded analyses ( 𝐸 1... 𝐸 𝑚 ), resulting in a manuscript with fully traced numbers and supported claims. The bottom band displays the execution record, which serves as the source of truth for both checks. This record captures data I/O, standard output, generated figures, and a complete list of all attempted tests including unsupported attempts ( 𝑇𝑢 ).\n\nexecution errors and regenerating scripts until successful. Throughout this process, it utilizes the perception layer to inspect raw input data or verify structural patterns in its own generated experimental plots. To ensure findings are robust and defensible, the agent incorporates a comprehensive suite of at least 4 analyses into the experimental design, combining a main hypothesis test with essential controls such as baselines, ablation studies, mechanism probes, or sensitivity sweeps.\n\nOnce the iterative execution concludes, a code-enforced exit check verifies result provenance and statistical validity (Algorithm 1). The check grounds the experiment in reality by confirming that the agent genuinely accessed the requested dataset and generated figures matching the raw execution trace. To prevent statistical manipulation, the system enforces a strict multiple-comparison correction that accounts for every test attempted during the debugging loop, which prevents artificial reductions in the correction denominator.",
+    "char_count": 1652,
+    "created_at": "2026-08-14T15:23:58.566460"
+  },
+  {
+    "chunk_id": 24,
+    "paper_title": "OmniScientist: An Omni-Modal Omni-Discipline AI Scientist",
+    "section": "Perception is where discovery begins",
+    "source_file": "parsed_papers\\2608.13558v1.md",
+    "text": "ation, the system enforces a strict multiple-comparison correction that accounts for every test attempted during the debugging loop, which prevents artificial reductions in the correction denominator. It also applies a post-hoc rescue guard to ensure headline findings originate from primary tests, runs an independence check to eliminate circular predictions, and relegates any unsupported analyses to the execution trace. Figure 5 places this check and the later claim check in sequence, both auditing against the same execution record rather than against the text the agent wrote.",
+    "char_count": 583,
+    "created_at": "2026-08-14T15:23:58.566460"
+  },
+  {
+    "chunk_id": 25,
+    "paper_title": "OmniScientist: An Omni-Modal Omni-Discipline AI Scientist",
+    "section": "4.4 Writeup",
+    "source_file": "parsed_papers\\2608.13558v1.md",
+    "text": "Require: reported result 𝑅, set of real stdout strings 𝑂 1: if 𝑅. metric = ∅ then reject 2: if no run in 𝑂 succeeded then reject 3: for all number 𝑛 reported in 𝑅 do 𝑛 𝑂: 4: if ∉ then reject ⊲ must actually execute code: ⊲ every number traces to real output\nRequire: reported result 𝑅, set of real stdout strings 𝑂 1: if 𝑅. metric = ∅ then reject 2: if no run in 𝑂 succeeded then reject 3: for all number 𝑛 reported in 𝑅 do 𝑛 𝑂: 5: end for 6: if dataset was not loaded from disk then reject 7: if 𝑅 reports ≥ 2 𝑝 -values then 8: correct over all tests run, including demoted ones 9: end if 10: if headline ∉ supported analyses then reject ⊲ must actually execute code: ⊲ anti-HARKing\nRequire: reported result 𝑅, set of real stdout strings 𝑂 1: if 𝑅. metric = ∅ then reject 2: if no run in 𝑂 succeeded then reject 3: for all number 𝑛 reported in 𝑅 do 𝑛 𝑂: 11: keep unsupported non-headline analyses in the trace 12: return accept\n⊲ must actually execute code: Standard peer-review\nRequire: reported result 𝑅, set of real stdout strings 𝑂 1: if 𝑅. metric = ∅ then reject 2: if no run in 𝑂 succeeded then reject 3: for all number 𝑛 reported in 𝑅 do 𝑛 𝑂: Backbone ⊲ must actually execute code: Novelty ↑\nRequire: reported result 𝑅, set of real stdout strings 𝑂 1: if 𝑅. metric = ∅ then reject 2: if no run in 𝑂 succeeded then reject 3: for all number 𝑛 reported in 𝑅 do 𝑛 𝑂: Sonnet 5 (Anthropic, 2026) ⊲ must actually execute code: 6.3\nRequire: reported result 𝑅, set of real stdout strings 𝑂 1: if 𝑅. metric = ∅ then reject 2: if no run in 𝑂 succeeded then reject 3: for all number 𝑛 reported in 𝑅 do 𝑛 𝑂: GPT-5.6 (OpenAI, 2026) ⊲ must actually execute code: 5.2\nRequire: reported result 𝑅, set of real stdout strings 𝑂 1: if 𝑅.",
+    "char_count": 1725,
+    "created_at": "2026-08-14T15:23:58.567461"
+  },
+  {
+    "chunk_id": 26,
+    "paper_title": "OmniScientist: An Omni-Modal Omni-Discipline AI Scientist",
+    "section": "4.4 Writeup",
+    "source_file": "parsed_papers\\2608.13558v1.md",
+    "text": "f no run in 𝑂 succeeded then reject 3: for all number 𝑛 reported in 𝑅 do 𝑛 𝑂: GPT-5.6 (OpenAI, 2026) ⊲ must actually execute code: 5.2\nRequire: reported result 𝑅, set of real stdout strings 𝑂 1: if 𝑅. metric = ∅ then reject 2: if no run in 𝑂 succeeded then reject 3: for all number 𝑛 reported in 𝑅 do 𝑛 𝑂: GLM-5.2 (Zhipu, 2026) ⊲ must actually execute code: 6.2\nRequire: reported result 𝑅, set of real stdout strings 𝑂 1: if 𝑅. metric = ∅ then reject 2: if no run in 𝑂 succeeded then reject 3: for all number 𝑛 reported in 𝑅 do 𝑛 𝑂: Kimi K2.7 (Kimi, 2025) ⊲ must actually execute code: 6.2\nRequire: reported result 𝑅, set of real stdout strings 𝑂 1: if 𝑅. metric = ∅ then reject 2: if no run in 𝑂 succeeded then reject 3: for all number 𝑛 reported in 𝑅 do 𝑛 𝑂: Qwen3.5-122B (Qwen Team, 2026) ⊲ must actually execute code: 4.7\nRequire: reported result 𝑅, set of real stdout strings 𝑂 1: if 𝑅. metric = ∅ then reject 2: if no run in 𝑂 succeeded then reject 3: for all number 𝑛 reported in 𝑅 do 𝑛 𝑂: Qwen3.5-27B (Qwen Team, 2026) ⊲ must actually execute code: 5.0\nRequire: reported result 𝑅, set of real stdout strings 𝑂 1: if 𝑅. metric = ∅ then reject 2: if no run in 𝑂 succeeded then reject 3: for all number 𝑛 reported in 𝑅 do 𝑛 𝑂: Qwen3.5-9B (Qwen Team, 2026) ⊲ must actually execute code: 4.0\nRequire: reported result 𝑅, set of real stdout strings 𝑂 1: if 𝑅. metric = ∅ then reject 2: if no run in 𝑂 succeeded then reject 3: for all number 𝑛 reported in 𝑅 do 𝑛 𝑂: Gemma-4-31B (Google, 2026) ⊲ must actually execute code: 4.7\nRequire: reported result 𝑅, set of real stdout strings 𝑂 1: if 𝑅. metric = ∅ then reject 2: if no run in 𝑂 succeeded then reject 3: for all number 𝑛 reported in 𝑅 do 𝑛 𝑂: Gemma-4-26B (Google, 2026) ⊲ must actually execute code: 4.4",
+    "char_count": 1758,
+    "created_at": "2026-08-14T15:23:58.567461"
+  },
+  {
+    "chunk_id": 27,
+    "paper_title": "OmniScientist: An Omni-Modal Omni-Discipline AI Scientist",
+    "section": "4.4 Writeup",
+    "source_file": "parsed_papers\\2608.13558v1.md",
+    "text": "= ∅ then reject 2: if no run in 𝑂 succeeded then reject 3: for all number 𝑛 reported in 𝑅 do 𝑛 𝑂: Gemma-4-26B (Google, 2026) ⊲ must actually execute code: 4.4",
+    "char_count": 158,
+    "created_at": "2026-08-14T15:23:58.567461"
+  },
+  {
+    "chunk_id": 28,
+    "paper_title": "OmniScientist: An Omni-Modal Omni-Discipline AI Scientist",
+    "section": "Evaluation",
+    "source_file": "parsed_papers\\2608.13558v1.md",
+    "text": "To comprehensively evaluate our proposed framework, we conduct extensive experiments across 36 datasets to verify its effectiveness. Furthermore, we present detailed ablation studies and in-depth analyses to elucidate the underlying mechanisms and demonstrate the overall superiority of the system. We also present 2 representative case studies to show that the system can conduct interesting and useful scientific discovery.",
+    "char_count": 425,
+    "created_at": "2026-08-14T15:23:58.568462"
+  },
+  {
+    "chunk_id": 29,
+    "paper_title": "OmniScientist: An Omni-Modal Omni-Discipline AI Scientist",
+    "section": "5.1 Experimental Setup",
+    "source_file": "parsed_papers\\2608.13558v1.md",
+    "text": "Backbone: Cases Sonnet 5: 36 GPT 5.6: 10 GLM 5.2: 18 Kimi K2.7: 9 Qwen3.5 122B: 34 Qwen3.5 27B: 36 Qwen3.5 9B: 32 Gemma-4 31B: 36 Gemma-4 26B: 34\nBackbone: Completed ↑ Sonnet 5: 36 GPT 5.6: 9 GLM 5.2: 17 Kimi K2.7: 6 Qwen3.5 122B: 30 Qwen3.5 27B: 32 Qwen3.5 9B: 18 Gemma-4 31B: 32 Gemma-4 26B: 25\nBackbone: Mean ↑ Sonnet 5: 6.5 GPT 5.6: 5.7 GLM 5.2: 6.7 Kimi K2.7: 6.5 Qwen3.5 122B: 5.4 Qwen3.5 27B: 5.3 Qwen3.5 9B: 4.1 Gemma-4 31B: 5.0 Gemma-4 26B: 4.3",
+    "char_count": 453,
+    "created_at": "2026-08-14T15:23:58.568462"
+  },
+  {
+    "chunk_id": 30,
+    "paper_title": "OmniScientist: An Omni-Modal Omni-Discipline AI Scientist",
+    "section": "5.2 Main Results",
+    "source_file": "parsed_papers\\2608.13558v1.md",
+    "text": "As shown in Table 3 and Figure 6, we highlight 3 key findings regarding the end-to-end quality of the generated manuscripts.\n\nFirst, end-to-end generation achieves high quality and is consistent across top LLM backbones. OmniScientist automates the entire research pipeline and returns complete manuscripts across the suite. Powered by Claude, the framework achieves an overall score of 6. 3 on the full suite. The strongest alternate backbones, such as GLMand Kimi, fall within a remarkably similar performance range on their respective evaluated subsets.\n\nSecond, performance is highly robust across all disciplines and evidence modalities. Across the evaluated cases, generation quality remains remarkably stable regardless of the research domain or data type. Whether grouping the runs by discipline or by evidence modality, the median composite scores range tightly between 6. 1 and 7. 1 (Tables 5 and 6). Furthermore, the highest-scoring manuscripts broadly span all domain categories, demonstrating strong generalization.\n\nThird, factual accuracy consistently leads the evaluation metrics across all reasoning engines. The relative ordering of the qualitative evaluation dimensions is highly concordant across the various backbones, achieving a median pairwise Spearman correlation of 0. 82. Across these models, factual accuracy consistently ranks at the top. This uniformity aligns directly with the shared provenance requirement, which holds each reasoning engine to the same rigorous evidence standards, while exit checks anchor every reported outcome to real program output regardless of model fluency.",
+    "char_count": 1614,
+    "created_at": "2026-08-14T15:23:58.568462"
+  }
+]

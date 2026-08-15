@@ -2,6 +2,7 @@ from pathlib import Path
 import json
 import uuid
 import os
+import re
 
 from dotenv import load_dotenv
 from langchain_ollama import OllamaEmbeddings
@@ -11,6 +12,20 @@ from qdrant_client.models import PointStruct
 
 
 load_dotenv()
+
+
+def normalize_paper_slug(title: str) -> str:
+    """Normalize the full paper title into a stable slug used for metadata filtering.
+
+    NOTE: We intentionally do NOT strip the subtitle (after ':') so that slugs
+    are consistent across embedding and retrieval.  Parenthetical suffixes are
+    still stripped because they are version-specific (e.g. '(v2)').
+    """
+    if not title:
+        return ""
+    # Remove only parenthetical suffixes; keep subtitles to preserve uniqueness
+    base_title = title.split("(", 1)[0].strip()
+    return re.sub(r"[^a-z0-9]+", "-", base_title.lower()).strip("-")
 
 
 class EmbeddingService:
@@ -93,7 +108,7 @@ class EmbeddingService:
         # 6. Ensure section-based indexing exists
         # -----------------------------------------
 
-        for field_name in ["section", "paper_title", "chunk_id"]:
+        for field_name in ["section", "paper_title", "paper_slug", "chunk_id"]:
             try:
                 client.create_payload_index(
                     collection_name=collection_name,
@@ -113,6 +128,8 @@ class EmbeddingService:
         for chunk in chunks:
 
             text = chunk["text"]
+            paper_title = chunk["paper_title"]
+            paper_slug = normalize_paper_slug(paper_title)
 
             embedding = embedding_model.embed_query(text)
 
@@ -121,8 +138,9 @@ class EmbeddingService:
             # -------------------------------------
 
             payload = {
-                "page_content": chunk["text"],
-                "paper_title": chunk["paper_title"],
+                "page_content": text,
+                "paper_title": paper_title,
+                "paper_slug": paper_slug,
                 "section": chunk["section"],
                 "chunk_id": chunk["chunk_id"],
                 "char_count": chunk["char_count"],
