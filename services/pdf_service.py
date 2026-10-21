@@ -1,40 +1,57 @@
-import os
-import requests
+
+from pathlib import Path
+import shutil
 
 
 class PDFService:
+    """Validate and save uploaded research documents."""
 
-    @staticmethod
-    def download_pdf(pdf_url: str) -> str:
-        """
-        Download an arXiv PDF.
+    SUPPORTED_EXTENSIONS = {
+        ".pdf", ".doc", ".docx", ".ppt", ".pptx",
+        ".txt", ".md", ".rtf",
+    }
 
-        Args:
-            pdf_url: PDF or abstract URL.
+    MAX_FILE_SIZE = 50 * 1024 * 1024  # 50 MB
+    UPLOAD_DIR = Path("data/uploaded_papers")
 
-        Returns:
-            Local file path.
-        """
+    @classmethod
+    def save_uploaded_document(cls, file_path: str) -> dict:
+        if not file_path:
+            raise ValueError("No document was uploaded.")
 
-        pdf_url = pdf_url.replace("/abs/", "/pdf/")
+        source = Path(file_path)
 
-        if not pdf_url.endswith(".pdf"):
-            pdf_url += ".pdf"
+        if not source.is_file():
+            raise FileNotFoundError(
+                f"Uploaded document not found: {source}"
+            )
 
-        os.makedirs("papers", exist_ok=True)
+        extension = source.suffix.lower()
 
-        filename = pdf_url.split("/")[-1]
-        filepath = os.path.join("papers", filename)
+        if extension not in cls.SUPPORTED_EXTENSIONS:
+            raise ValueError(
+                f"Unsupported file format: {extension}"
+            )
 
-        response = requests.get(
-            pdf_url,
-            headers={"User-Agent": "Mozilla/5.0"},
-            timeout=30,
-        )
+        file_size = source.stat().st_size
 
-        response.raise_for_status()
+        if file_size == 0:
+            raise ValueError("The uploaded document is empty.")
 
-        with open(filepath, "wb") as f:
-            f.write(response.content)
+        if file_size > cls.MAX_FILE_SIZE:
+            raise ValueError("File exceeds the 50 MB limit.")
 
-        return filepath
+        cls.UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+        destination = cls.UPLOAD_DIR / source.name
+
+        # Avoid copying a file onto itself.
+        if source.resolve() != destination.resolve():
+            shutil.copy2(source, destination)
+
+        return {
+            "file_name": destination.name,
+            "file_path": str(destination.resolve()),
+            "file_extension": extension,
+            "file_size_bytes": file_size,
+        }

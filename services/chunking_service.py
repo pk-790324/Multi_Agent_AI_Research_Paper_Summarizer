@@ -1,474 +1,119 @@
+
 from pathlib import Path
 import json
 import re
 from datetime import datetime
 
 
-MAX_CHUNK_SIZE = 1800
-CHUNK_OVERLAP = 200
-
-CORE_SUMMARY_SECTIONS = [
-    "Abstract",
-    "Introduction",
-    "Methodology",
-    "Experiments",
-    "Results",
-    "Discussion",
-    "Conclusion",
-]
-
-
 class ChunkingService:
-
-    # ---------------------------------------------------------
-    # SECTION NORMALIZATION
-    # ---------------------------------------------------------
-
-    @staticmethod
-    def normalize_section(heading: str) -> str:
-        """
-        Normalize section headings.
-
-        Examples:
-
-        1 Introduction
-        -> Introduction
-
-        2. Methodology
-        -> Methodology
-
-        4.1 Experimental Design
-        -> 4.1 Experimental design
-
-        Abstract
-        -> Abstract
-        """
-
-        heading = heading.strip()
-
-        # Remove markdown heading symbols
-        heading = re.sub(
-            r"^#{1,6}\s*",
-            "",
-            heading
-        ).strip()
-
-        # Remove only leading number for standard sections
-        # BUT preserve subsection numbers such as 4.1
-        #
-        # 1 Introduction -> Introduction
-        # 2. Methodology -> Methodology
-        #
-        # 4.1 Experimental Design -> 4.1 Experimental Design
-        heading = re.sub(
-            r"^\d+\.?\s+(?=[A-Za-z])",
-            "",
-            heading
-        )
-
-        heading = re.sub(
-            r"\s+",
-            " ",
-            heading
-        ).strip()
-
-        normalized = heading.lower()
-
-        mapping = {
-
-            "abstract": "Abstract",
-
-            "introduction": "Introduction",
-
-            "background": "Background",
-
-            "related work": "Related Work",
-
-            "literature review": "Literature Review",
-
-            "method": "Methodology",
-
-            "methods": "Methodology",
-
-            "methodology": "Methodology",
-
-            "experimental setup": "Experiments",
-
-            "experiment": "Experiments",
-
-            "experiments": "Experiments",
-
-            "evaluation": "Evaluation",
-
-            "result": "Results",
-
-            "results": "Results",
-
-            "discussion": "Discussion",
-
-            "conclusion": "Conclusion",
-
-            "conclusions": "Conclusion",
-
-            "limitations": "Limitations",
-
-            "future work": "Future Work",
-
-            "references": "References",
-
-            "acknowledgements": "Acknowledgements",
-
-            "acknowledgments": "Acknowledgements",
-        }
-
-        return mapping.get(
-            normalized,
-            heading
-        )
-
-    # ---------------------------------------------------------
-    # MARKDOWN TABLE CLEANER
-    # ---------------------------------------------------------
-
-    @staticmethod
-    def clean_markdown_table(text: str) -> str:
-        """
-        Convert Markdown tables into readable plain text.
-
-        Example:
-
-        | Method | Result |
-        |--------|--------|
-        | A      | 90%    |
-
-        becomes:
-
-        Method: A
-        Result: 90%
-        """
-
-        lines = text.splitlines()
-
-        table_lines = []
-
-        for line in lines:
-
-            stripped = line.strip()
-
-            if not stripped:
-                continue
-
-            if "|" not in stripped:
-                continue
-
-            # Skip markdown separator rows
-            if re.match(
-                r"^\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)+\|?$",
-                stripped
-            ):
-                continue
-
-            table_lines.append(stripped)
-
-        if not table_lines:
-            return text
-
-        cleaned = []
-
-        headers = None
-
-        for index, line in enumerate(table_lines):
-
-            cells = [
-                cell.strip()
-                for cell in line.strip("|").split("|")
-            ]
-
-            if index == 0:
-
-                headers = cells
-
-                continue
-
-            if headers:
-
-                row_parts = []
-
-                for i, value in enumerate(cells):
-
-                    if i < len(headers):
-
-                        header = headers[i]
-
-                        if value:
-
-                            row_parts.append(
-                                f"{header}: {value}"
-                            )
-
-                if row_parts:
-
-                    cleaned.append(
-                        " ".join(row_parts)
-                    )
-
-            else:
-
-                cleaned.append(
-                    " ".join(cells)
-                )
-
-        if cleaned:
-
-            return "\n".join(cleaned)
-
-        return text
-
-    # ---------------------------------------------------------
-    # GENERAL TEXT CLEANING
-    # ---------------------------------------------------------
-
-    @staticmethod
-    def clean_text(text: str) -> str:
-        """
-        Clean PDF/parser artifacts before embedding.
-        """
-
-        # Remove HTML comments
-        text = re.sub(
-            r"<!--.*?-->",
-            "",
-            text,
-            flags=re.DOTALL
-        )
-
-        # Remove excessive whitespace
-        text = re.sub(
-            r"[ \t]+",
-            " ",
-            text
-        )
-
-        # Normalize excessive blank lines
-        text = re.sub(
-            r"\n{3,}",
-            "\n\n",
-            text
-        )
-
-        # Fix spaces around punctuation
-        text = re.sub(
-            r"\s+([,.!?;:])",
-            r"\1",
-            text
-        )
-
-        return text.strip()
-
-    # ---------------------------------------------------------
-    # SPLIT LARGE TEXT
-    # ---------------------------------------------------------
-
-    @staticmethod
-    def split_large_text(
-        text: str,
-        chunk_size: int = MAX_CHUNK_SIZE,
-        overlap: int = CHUNK_OVERLAP,
-    ):
-
-        text = text.strip()
-
-        if len(text) <= chunk_size:
-
-            return [text]
-
-        chunks = []
-
-        start = 0
-
-        while start < len(text):
-
-            end = start + chunk_size
-
-            # Try to break at a sentence
-            if end < len(text):
-
-                sentence_break = text.rfind(
-                    ". ",
-                    start,
-                    end
-                )
-
-                if sentence_break > start:
-
-                    end = sentence_break + 1
-
-            chunk = text[start:end].strip()
-
-            if chunk:
-
-                chunks.append(chunk)
-
-            start = max(
-                end - overlap,
-                start + 1
-            )
-
-        return chunks
-
-    # ---------------------------------------------------------
-    # SECTION-AWARE CHUNKING
-    # ---------------------------------------------------------
-
-    @staticmethod
-    def get_core_summary_sections() -> list[str]:
-        """Return the paper sections most useful for a high-level paper summary."""
-        return list(CORE_SUMMARY_SECTIONS)
 
     @staticmethod
     def section_aware_chunking(
         markdown_path: str,
         paper_title: str,
-    ) -> tuple[list, str]:
+        chunk_size: int = 1800,
+        overlap: int = 200,
+    ) -> tuple[list[dict], str]:
 
         markdown_path = Path(markdown_path)
 
-        if not markdown_path.exists():
-
+        if not markdown_path.is_file():
             raise FileNotFoundError(
-                markdown_path
+                f"Markdown file not found: {markdown_path}"
             )
 
         markdown = markdown_path.read_text(
             encoding="utf-8"
         )
 
-        # Split by markdown headings
-        pattern = r"(?=^#{1,6}\s+)"
-
+        # Split at Markdown headings: #, ##, ###, etc.
         sections = re.split(
-            pattern,
+            r"(?=^#{1,6}\s+)",
             markdown,
-            flags=re.MULTILINE
+            flags=re.MULTILINE,
         )
 
         chunks = []
-
         chunk_id = 1
 
-        for section in sections:
+        for section_text in sections:
+            section_text = section_text.strip()
 
-            section = section.strip()
-
-            if not section:
-
+            if not section_text:
                 continue
 
-            lines = section.splitlines()
+            lines = section_text.splitlines()
 
-            # -------------------------------------------------
-            # GET HEADING
-            # -------------------------------------------------
-
-            heading = "Unknown"
-
-            if lines and lines[0].startswith("#"):
-
-                heading = ChunkingService.normalize_section(
-                    lines[0]
-                )
-
-                body = "\n".join(
-                    lines[1:]
+            # Extract the heading and section body
+            if lines[0].startswith("#"):
+                heading = re.sub(
+                    r"^#{1,6}\s+",
+                    "",
+                    lines[0],
                 ).strip()
 
+                body = "\n".join(lines[1:]).strip()
             else:
+                heading = "Document"
+                body = section_text
 
-                body = section
-
-            if not body:
-
-                continue
-
-            # -------------------------------------------------
-            # CLEAN TABLES
-            # -------------------------------------------------
-
-            body = ChunkingService.clean_markdown_table(
-                body
-            )
-
-            # -------------------------------------------------
-            # CLEAN GENERAL TEXT
-            # -------------------------------------------------
-
-            body = ChunkingService.clean_text(
-                body
-            )
+            # Clean up unnecessary whitespace
+            body = re.sub(r"\s+", " ", body).strip()
 
             if not body:
-
                 continue
 
-            # -------------------------------------------------
-            # SPLIT INTO CHUNKS
-            # -------------------------------------------------
+            # Split long sections; preserve section metadata
+            start = 0
 
-            pieces = ChunkingService.split_large_text(
-                body
-            )
+            while start < len(body):
+                end = min(start + chunk_size, len(body))
 
-            for piece in pieces:
+                # Prefer a sentence boundary when possible
+                if end < len(body):
+                    sentence_end = body.rfind(
+                        ". ", start, end
+                    )
 
-                chunks.append(
-                    {
+                    if sentence_end > start:
+                        end = sentence_end + 1
+
+                piece = body[start:end].strip()
+
+                if piece:
+                    chunks.append({
                         "chunk_id": chunk_id,
-
                         "paper_title": paper_title,
-
                         "section": heading,
-
-                        "source_file": str(
-                            markdown_path
-                        ),
-
+                        "source_file": str(markdown_path),
                         "text": piece,
-
                         "char_count": len(piece),
+                        "created_at": datetime.now().isoformat(),
+                    })
 
-                        "created_at":
-                            datetime.utcnow().isoformat(),
-                    }
-                )
+                    chunk_id += 1
 
-                chunk_id += 1
+                if end >= len(body):
+                    break
 
-        # -----------------------------------------------------
-        # SAVE CHUNKS
-        # -----------------------------------------------------
+                # Move forward while retaining overlap
+                start = max(end - overlap, start + 1)
 
+        # Save chunks as JSON
         output_dir = Path("chunks")
-
-        output_dir.mkdir(
-            exist_ok=True
-        )
+        output_dir.mkdir(parents=True, exist_ok=True)
 
         chunk_file = (
-            output_dir /
-            f"{markdown_path.stem}_chunks.json"
+            output_dir / f"{markdown_path.stem}_chunks.json"
         )
 
-        with open(
-            chunk_file,
-            "w",
-            encoding="utf-8"
-        ) as f:
-
-            json.dump(
+        chunk_file.write_text(
+            json.dumps(
                 chunks,
-                f,
                 indent=2,
-                ensure_ascii=False
-            )
+                ensure_ascii=False,
+            ),
+            encoding="utf-8",
+        )
 
         return chunks, str(chunk_file)

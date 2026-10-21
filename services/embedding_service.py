@@ -185,3 +185,8 @@ class EmbeddingService:
             "vector_dimension": len(points[0].vector["dense"]),
             "indexed_chunks": len(points),
         }
+
+
+
+
+

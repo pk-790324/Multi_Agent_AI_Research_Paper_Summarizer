@@ -1,37 +1,57 @@
 from state.state import ResearchPaperState
 from services.chunking_service import ChunkingService
+from pathlib import Path
 
 
-def chunking_node(
-    state: ResearchPaperState,
-) -> ResearchPaperState:
-    """
-    Generate section-aware chunks from the parsed markdown
-    and update the graph state.
-    """
 
+
+def chunking_node(state: ResearchPaperState) -> ResearchPaperState:
     print("=" * 60)
     print("CHUNKING NODE")
     print("=" * 60)
 
-    markdown_path = state["artifacts"]["markdown_path"]
+    artifacts = state.get("artifacts", {})
 
-    paper_title = state["paper"][0]["title"]
+    try:
+        # Get the Markdown file created by the parser node
+        markdown_path = artifacts.get("markdown_path")
 
-    chunks, chunk_file = (
-        ChunkingService.section_aware_chunking(
+        if not markdown_path:
+            raise ValueError(
+                "markdown_path is missing from state artifacts."
+            )
+
+        # Use the uploaded document's filename as the title
+        paper_title = artifacts.get("paper_title")
+
+        if not paper_title:
+            paper_title = Path(markdown_path).stem.replace("_", " ")
+
+        # Create section-based chunks
+        chunks, chunk_file = ChunkingService.section_aware_chunking(
             markdown_path=markdown_path,
             paper_title=paper_title,
         )
-    )
 
-    print(f"Generated {len(chunks)} chunks")
+        print(f"Paper title: {paper_title}")
+        print(f"Generated chunks: {len(chunks)}")
+        print(f"Chunks saved to: {chunk_file}")
 
-    return {
-        **state,
-        "chunks": chunks,
-        "artifacts": {
-            **state["artifacts"],
-            "chunk_file": chunk_file,
-        },
-    }
+        return {
+            **state,
+            "artifacts": {
+                **artifacts,
+                "paper_title": paper_title,
+                "chunks": chunks,
+                "chunk_file": chunk_file,
+            },
+            "error": "",
+        }
+
+    except Exception as exc:
+        print(f"Chunking failed: {exc}")
+
+        return {
+            **state,
+            "error": f"Chunking failed: {exc}",
+        }

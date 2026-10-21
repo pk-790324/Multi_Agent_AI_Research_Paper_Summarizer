@@ -1,16 +1,12 @@
 from typing_extensions import TypedDict,Any,List
 
-class ResearchPaperState(TypedDict):
-    user_query: str
-    paper: list
-    artifacts: dict
-    chunks:list
-    collection_name: str
-    
-    
+
+from typing import TypedDict, Any
 
 
-
+class ResearchPaperState(TypedDict, total=False):
+    artifacts: dict[str, Any]
+    error: str
 
 class ResearchState(TypedDict):
 
