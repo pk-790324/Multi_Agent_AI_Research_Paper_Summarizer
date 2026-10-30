@@ -1,83 +1,239 @@
-from langchain_core.prompts import ChatPromptTemplate
-from state.state import ResearchState
-from llm.llm import llm 
 
+from langchain_core.prompts import ChatPromptTemplate
+
+from state.state import ResearchState
+from llm.llm import llm
+
+
+# ============================================================
+# CRITIC PROMPT
+# ============================================================
 
 critic_prompt = ChatPromptTemplate.from_template("""
-You are a critical reviewer of a research paper analysis.
+You are a critical reviewer in a research paper analysis system.
 
-User question:
+Your responsibility is to evaluate the quality, correctness,
+and evidence support of the Analyst's response.
+
+USER QUESTION:
 {user_query}
 
-Retrieved evidence:
+RETRIEVED EVIDENCE:
 {context}
 
-Analyst's analysis:
+ANALYST'S ANALYSIS:
 {analysis}
 
-Evaluate the analysis.
+EVALUATION INSTRUCTIONS:
 
-Check:
+1. Check whether the analysis answers the user's question.
+2. Verify whether important claims are supported by the retrieved evidence.
+3. Identify unsupported or potentially misleading claims.
+4. Identify important missing information.
+5. Check whether the analysis accurately represents the research findings.
+6. Check whether the methodology and technical explanations are correct
+   according to the supplied evidence.
+7. Do not introduce information from your own knowledge.
+8. Do not request additional retrieval unless the missing information
+   is genuinely necessary to answer the user's question.
 
-1. Is the answer supported by the retrieved evidence?
-2. Are there unsupported claims?
-3. Is important information missing?
-4. Does the analysis actually answer the user's question?
+DECISION:
 
-Return your evaluation using this format:
+If the evidence is sufficient and the analysis is acceptable, return:
 
 VERDICT: APPROVED
-REASON: <reason>
+REASON: <explain why the analysis is acceptable>
 
-OR
+If important evidence is missing, return:
 
 VERDICT: NEED_MORE_RETRIEVAL
-REASON: <what information is missing>
+REASON: <explain exactly what evidence is missing>
+
+IMPORTANT:
+- Be specific in your evaluation.
+- Do not approve unsupported claims.
+- Do not request retrieval simply because additional information
+  would be interesting.
 """)
 
 
+# ============================================================
+# CRITIC AGENT
+# ============================================================
+
 def critic_agent(state: ResearchState):
+
     print("\n" + "=" * 60)
     print("CRITIC AGENT")
     print("=" * 60)
 
-    # -------------------------------------------------------
-    # Truncate context to stay within Groq's free-tier limit
-    # (llama-3.1-8b-instant: 6,000 TPM).
-    # Budget breakdown (chars ≈ tokens * 4):
-    #   prompt template + analysis + query ≈ 2,000 chars
-    #   evidence budget                   ≈ 2,000 chars
-    # -------------------------------------------------------
-    MAX_CONTEXT_DOCS  = 5
-    MAX_CONTEXT_CHARS = 2000
-    MAX_ANALYSIS_CHARS = 800
+    # --------------------------------------------------------
+    # 1. READ STATE
+    # --------------------------------------------------------
 
-    docs = state["retrieved_docs"][:MAX_CONTEXT_DOCS]
+    user_query = state.get("user_query", "").strip()
+
+    retrieved_chunks = state.get(
+        "retrieved_chunks",
+        []
+    )
+
+    analysis = state.get(
+        "analysis",
+        ""
+    )
+
+    print("Research question:", user_query)
+    print("Retrieved chunks:", len(retrieved_chunks))
+    print("Analysis available:", bool(analysis))
+
+    # --------------------------------------------------------
+    # 2. VALIDATE INPUT
+    # --------------------------------------------------------
+
+    if not analysis:
+
+        return {
+            "critical_analysis": (
+                "VERDICT: NEED_MORE_RETRIEVAL\n"
+                "REASON: Analyst's analysis is missing."
+            )
+        }
+
+    if not retrieved_chunks:
+
+        return {
+            "critical_analysis": (
+                "VERDICT: NEED_MORE_RETRIEVAL\n"
+                "REASON: No retrieved research evidence is available."
+            )
+        }
+
+    # --------------------------------------------------------
+    # 3. BUILD CONTEXT
+    # --------------------------------------------------------
+
+    MAX_CONTEXT_DOCS = 5
+    MAX_CONTEXT_CHARS = 3000
+    MAX_ANALYSIS_CHARS = 2000
+
     context_parts = []
     used = 0
-    for doc in docs:
-        content = doc.page_content.strip()
+
+    for index, doc in enumerate(
+        retrieved_chunks[:MAX_CONTEXT_DOCS],
+        start=1
+    ):
+
+        # Retrieved chunks are dictionaries
+        content = doc.get(
+            "page_content",
+            doc.get("text", "")
+        )
+
         if not content:
             continue
-        if used + len(content) > MAX_CONTEXT_CHARS:
-            remaining = MAX_CONTEXT_CHARS - used
-            if remaining < 80:
-                break
-            content = content[:remaining]
-        context_parts.append(content)
-        used += len(content)
+
+        content = content.strip()
+
+        paper_title = doc.get(
+            "paper_title",
+            "Unknown"
+        )
+
+        section = doc.get(
+            "section",
+            "Unknown"
+        )
+
+        page_start = doc.get("page_start")
+        page_end = doc.get("page_end")
+
+        chunk_id = doc.get(
+            "chunk_id",
+            "Unknown"
+        )
+
+        if page_start is not None and page_end is not None:
+            page_info = (
+                str(page_start)
+                if page_start == page_end
+                else f"{page_start}-{page_end}"
+            )
+        else:
+            page_info = "Unknown"
+
+        header = (
+            f"[Source {index}]\n"
+            f"Paper: {paper_title}\n"
+            f"Section: {section}\n"
+            f"Page: {page_info}\n"
+            f"Chunk ID: {chunk_id}\n"
+            f"Content:\n"
+        )
+
+        remaining = MAX_CONTEXT_CHARS - used
+
+        if len(header) >= remaining:
+            break
+
+        body_budget = remaining - len(header)
+
+        content = content[:body_budget]
+
+        entry = header + content
+
+        context_parts.append(entry)
+        used += len(entry)
+
+        if used >= MAX_CONTEXT_CHARS:
+            break
 
     context = "\n\n".join(context_parts)
-    analysis = (state["analysis"] or "")[:MAX_ANALYSIS_CHARS]
 
-    chain = critic_prompt | llm
+    if not context:
 
-    response = chain.invoke({
-        "user_query": state["user_query"],
-        "context": context,
-        "analysis": analysis,
-    })
+        return {
+            "critical_analysis": (
+                "VERDICT: NEED_MORE_RETRIEVAL\n"
+                "REASON: Retrieved chunks contain no usable text."
+            )
+        }
 
-    return {
-        "critique": response.content
-    }
+    analysis = analysis[:MAX_ANALYSIS_CHARS]
+
+    # --------------------------------------------------------
+    # 4. EVALUATE ANALYSIS
+    # --------------------------------------------------------
+
+    try:
+
+        chain = critic_prompt | llm
+
+        response = chain.invoke({
+            "user_query": user_query,
+            "context": context,
+            "analysis": analysis,
+        })
+
+        critique = response.content.strip()
+
+        print("\nCRITIC EVALUATION:")
+        print(critique)
+
+        # ----------------------------------------------------
+        # 5. RETURN RESULT
+        # ----------------------------------------------------
+
+        return {
+            "critical_analysis": critique
+        }
+
+    except Exception as e:
+
+        print("CRITIC ERROR:", str(e))
+
+        return {
+            "critical_analysis": "",
+            "error": f"Critic failed: {str(e)}"
+        }

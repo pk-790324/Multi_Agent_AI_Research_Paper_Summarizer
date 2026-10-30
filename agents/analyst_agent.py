@@ -31,12 +31,12 @@ def analyst_agent(state: ResearchState):
     MAX_CONTEXT_DOCS = 5
     MAX_CONTEXT_CHARS = 3500
 
-    docs = state["retrieved_docs"][:MAX_CONTEXT_DOCS]
+    docs=state.get("retrieved_chunks", [])[:MAX_CONTEXT_DOCS]
     context_parts = []
     current_length = 0
 
     for doc in docs:
-        content = doc.page_content.strip()
+        content = doc.get("page_content", "").strip()
         if not content:
             continue
         if current_length + len(content) > MAX_CONTEXT_CHARS:

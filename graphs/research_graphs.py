@@ -9,6 +9,49 @@ from agents.retriever_agent import retriever_agent
 from agents.analyst_agent import analyst_agent
 from agents.critic_agent import critic_agent
 from agents.synthesizer_agent import synthesizer_agent
+from agents.citation_agent import citation_agent
+
+from langgraph.config import get_stream_writer
+
+
+
+def track_agent(agent_name, agent_function):
+
+    def tracked_node(state):
+
+        writer = get_stream_writer()
+
+        # Notify Gradio that this agent has started.
+        writer({
+            "agent": agent_name,
+            "status": "running"
+        })
+
+        try:
+            result = agent_function(state)
+
+            # Notify Gradio that this agent has completed.
+            writer({
+                "agent": agent_name,
+                "status": "completed"
+            })
+
+            return result
+
+        except Exception as error:
+
+            writer({
+                "agent": agent_name,
+                "status": "failed",
+                "error": str(error)
+            })
+
+            raise
+
+    return tracked_node
+
+
+
 
 
 # --------------------------------------------------
@@ -24,27 +67,32 @@ workflow = StateGraph(ResearchState)
 
 workflow.add_node(
     "orchestrator",
-    orchestrator_agent
+    track_agent("Orchestrator", orchestrator_agent)
 )
 
 workflow.add_node(
     "retriever",
-    retriever_agent
+    track_agent("Retriever", retriever_agent)
 )
 
 workflow.add_node(
     "analyst",
-    analyst_agent
+    track_agent("Research Analyst", analyst_agent)
 )
 
 workflow.add_node(
     "critic",
-    critic_agent
+    track_agent("Critical Analyst", critic_agent)
+)
+
+workflow.add_node(
+    "citation",
+    track_agent("Citation Agent", citation_agent)
 )
 
 workflow.add_node(
     "synthesizer",
-    synthesizer_agent
+    track_agent("Synthesis Writer", synthesizer_agent)
 )
 
 
@@ -74,6 +122,7 @@ workflow.add_conditional_edges(
         "retriever": "retriever",
         "analyst": "analyst",
         "critic": "critic",
+        "citation":"citation",
         "synthesizer": "synthesizer",
     }
 )
@@ -97,6 +146,8 @@ workflow.add_edge(
     "critic",
     "orchestrator"
 )
+
+workflow.add_edge("citation", "orchestrator")
 
 
 # --------------------------------------------------

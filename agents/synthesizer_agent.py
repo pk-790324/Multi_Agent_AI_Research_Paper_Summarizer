@@ -1,14 +1,21 @@
+
 from langchain_core.prompts import ChatPromptTemplate
+
 from state.state import ResearchState
 from llm.llm import llm
+
+
+# ============================================================
+# SYNTHESIZER PROMPT
+# ============================================================
 
 synthesizer_prompt = ChatPromptTemplate.from_template("""
 You are the Synthesizer Agent in a multi-agent
 research paper analysis system.
 
-Your job is to produce the final answer to the user's question
-using the retrieved evidence, analyst's analysis, and critic's
-evaluation.
+Your task is to produce a comprehensive and accurate final
+answer using the retrieved research evidence, analyst's
+analysis, and critic's evaluation.
 
 USER QUESTION:
 {user_query}
@@ -22,103 +29,231 @@ ANALYST'S ANALYSIS:
 CRITIC'S EVALUATION:
 {critique}
 
+CITATION-VERIFIED ANALYSIS:
+{cited_analysis}
+
 
 INSTRUCTIONS:
 
 1. Answer the user's question directly.
-2. Use only information supported by the retrieved evidence.
-3. Do not invent facts or information.
-4. Do not introduce information from your own knowledge.
-5. Combine the strongest points from the analyst's analysis.
-6. Respect the critic's verification.
-7. If the evidence is insufficient, clearly state that.
-8. Structure the answer clearly.
-9. When possible, mention the paper section or page information
-   available in the retrieved metadata.
-10. If supporting background from cited works is included in the evidence,
-    explicitly mention the short author-style reference names such as
-    Bahdanau et al., Hochreiter & Schmidhuber, Sutskever et al., or similar,
-    instead of raw numbers.
-11. Do not mention the internal agents or orchestration process.
+2. Use only information supported by the supplied evidence.
+3. Do not invent facts or introduce unsupported background knowledge.
+4. Combine the strongest findings from the analyst's analysis.
+5. Respect the critic's evaluation and identified limitations.
+6. Preserve valid inline source citations such as [S1] and [S2].
+7. Do not create new citation IDs.
+8. If evidence is insufficient, explicitly state this.
+9. Structure the answer with meaningful headings where appropriate.
+10. Mention paper titles, sections, and page numbers when available.
+11. Explain technical concepts clearly without changing their meaning.
+12. Do not mention internal agents or the orchestration process.
 
+EXPECTED OUTPUT STRUCTURE:
+
+## Answer
+Direct answer to the user's question.
+
+## Key Findings
+Important findings supported by the retrieved evidence.
+
+## Explanation
+A clear explanation of the relevant concepts and methodology.
+
+## Evidence and Sources
+Supporting claims with their original citation IDs.
+
+## Limitations
+Important limitations or missing evidence, if applicable.
 
 FINAL ANSWER:
 """)
 
 
-def synthesizer_agent(state:ResearchState):
+# ============================================================
+# SYNTHESIZER AGENT
+# ============================================================
 
-    # -----------------------------------------
-    # Build context from retrieved documents
-    # -----------------------------------------
-    
+def synthesizer_agent(state: ResearchState):
+
     print("\n" + "=" * 60)
     print("SYNTHESIZER AGENT")
     print("=" * 60)
 
-    # -------------------------------------------------------
-    # Truncate context to stay within Groq's free-tier limit.
-    # Budget (chars ≈ tokens * 4):
-    #   prompt template              ≈  600 chars
-    #   query + analysis + critique  ≈ 2,000 chars
-    #   evidence                     ≈ 3,000 chars
-    #   total                        ≈ 5,600 chars  < 6,000 TPM
-    # -------------------------------------------------------
-    MAX_CONTEXT_DOCS  = 8
-    MAX_CONTEXT_CHARS = 3000
+    # --------------------------------------------------------
+    # 1. READ STATE
+    # --------------------------------------------------------
+
+    user_query = state.get("user_query", "").strip()
+
+    retrieved_chunks = state.get(
+        "retrieved_chunks",
+        []
+    )
+
+    analysis = state.get("analysis", "")
+
+    critique = (
+        state.get("critical_analysis")
+        or state.get("critique", "")
+    )
+
+    cited_analysis = state.get(
+        "cited_analysis",
+        ""
+    )
+
+    print("Research question:", user_query)
+    print("Retrieved chunks:", len(retrieved_chunks))
+    print("Analysis available:", bool(analysis))
+    print("Critique available:", bool(critique))
+    print("Cited analysis available:", bool(cited_analysis))
+
+    # --------------------------------------------------------
+    # 2. VALIDATE INPUT
+    # --------------------------------------------------------
+
+    if not user_query:
+        return {
+            "final_answer": "Unable to generate an answer: research question is missing."
+        }
+
+    if not retrieved_chunks:
+        return {
+            "final_answer": (
+                "I could not generate a research-based answer because "
+                "no relevant research-paper evidence was retrieved."
+            )
+        }
+
+    # --------------------------------------------------------
+    # 3. BUILD CONTEXT FROM RETRIEVED CHUNKS
+    # --------------------------------------------------------
+
+    MAX_CONTEXT_DOCS = 8
+    MAX_CONTEXT_CHARS = 6000
 
     context_parts = []
     used = 0
 
-    for doc in state["retrieved_docs"][:MAX_CONTEXT_DOCS]:
-        metadata = doc.metadata
+    for index, doc in enumerate(
+        retrieved_chunks[:MAX_CONTEXT_DOCS],
+        start=1
+    ):
 
-        paper_title    = metadata.get("paper_title", "Unknown")
-        section        = metadata.get("section", "Unknown")
-        page           = metadata.get("page_number", "Unknown")
-        citation_ids   = metadata.get("citation_ids", [])
-        citation_labels = metadata.get("citation_labels", [])
+        # Retrieved chunks are dictionaries
+        paper_title = doc.get(
+            "paper_title",
+            "Unknown"
+        )
 
-        citation_text = ""
-        if citation_labels:
-            citation_text = f"\nCitations: [{', '.join(str(v) for v in citation_labels)}]"
-        elif citation_ids:
-            citation_text = f"\nCitations: [{', '.join(str(v) for v in citation_ids)}]"
+        section = doc.get(
+            "section",
+            "Unknown"
+        )
 
-        content = doc.page_content.strip()
-        header  = f"Paper: {paper_title}\nSection: {section}\nPage: {page}{citation_text}\n\nContent:\n"
-        entry   = header + content
+        page_start = doc.get("page_start")
+        page_end = doc.get("page_end")
 
-        if used + len(entry) > MAX_CONTEXT_CHARS:
-            remaining = MAX_CONTEXT_CHARS - used
-            if remaining < 120:
-                break
-            # Keep the header and truncate only the body
-            body_budget = remaining - len(header)
-            if body_budget > 0:
-                entry = header + content[:body_budget]
+        chunk_id = doc.get(
+            "chunk_id",
+            "Unknown"
+        )
+
+        # Your hybrid search service returns page_content
+        content = doc.get(
+            "page_content",
+            doc.get("text", "")
+        )
+
+        if not content:
+            continue
+
+        content = content.strip()
+
+        # Format page information
+        if page_start is not None and page_end is not None:
+
+            if page_start == page_end:
+                page_info = str(page_start)
             else:
+                page_info = f"{page_start}-{page_end}"
+
+        else:
+            page_info = "Unknown"
+
+        header = (
+            f"[Retrieved Chunk {index}]\n"
+            f"Paper: {paper_title}\n"
+            f"Section: {section}\n"
+            f"Page: {page_info}\n"
+            f"Chunk ID: {chunk_id}\n\n"
+            f"Content:\n"
+        )
+
+        entry = header + content
+
+        remaining = MAX_CONTEXT_CHARS - used
+
+        if len(entry) > remaining:
+
+            body_budget = remaining - len(header)
+
+            if body_budget <= 0:
                 break
+
+            entry = header + content[:body_budget]
 
         context_parts.append(entry)
+
         used += len(entry)
+
+        if used >= MAX_CONTEXT_CHARS:
+            break
 
     context = "\n\n".join(context_parts)
 
+    print("Context characters:", len(context))
+    print("Context chunks:", len(context_parts))
 
-    # -----------------------------------------
-    # Generate final answer
-    # -----------------------------------------
+    if not context:
+        return {
+            "final_answer": (
+                "The retrieved chunks did not contain usable text."
+            )
+        }
 
-    chain = synthesizer_prompt | llm
+    # --------------------------------------------------------
+    # 4. GENERATE FINAL ANSWER
+    # --------------------------------------------------------
 
-    response = chain.invoke({
-        "user_query": state["user_query"],
-        "context": context,
-        "analysis": state["analysis"],
-        "critique": state["critique"],
-    })
+    try:
 
-    return {
-        "final_answer": response.content
-    }
+        chain = synthesizer_prompt | llm
+
+        response = chain.invoke({
+            "user_query": user_query,
+            "context": context,
+            "analysis": analysis or "No analysis available.",
+            "critique": critique or "No critical evaluation available.",
+            "cited_analysis": (
+                cited_analysis
+                or "No citation-verified analysis available."
+            ),
+        })
+
+        final_answer = response.content
+
+        print("\nFINAL ANSWER GENERATED SUCCESSFULLY")
+
+        return {
+            "final_answer": final_answer
+        }
+
+    except Exception as e:
+
+        print("SYNTHESIZER ERROR:", str(e))
+
+        return {
+            "final_answer": "",
+            "error": f"Synthesizer failed: {str(e)}"
+        }

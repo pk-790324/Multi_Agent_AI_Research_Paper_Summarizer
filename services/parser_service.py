@@ -30,13 +30,18 @@ class ParserService:
             )
 
         converter = DocumentConverter()
-        result = converter.convert(str(pdf_path))
-        markdown = result.document.export_to_markdown()
+        result = converter.convert(pdf_path)
+
+        markdown_content = result.document.export_to_markdown(
+    page_break_placeholder="\n<!-- PAGE_BREAK -->\n"
+)
 
         output_dir = Path("parsed_papers")
         output_dir.mkdir(parents=True, exist_ok=True)
 
         markdown_path = output_dir / f"{pdf_path.stem}.md"
-        markdown_path.write_text(markdown, encoding="utf-8")
-
+        markdown_path.write_text(
+        markdown_content,
+    encoding="utf-8"
+)
         return str(markdown_path)

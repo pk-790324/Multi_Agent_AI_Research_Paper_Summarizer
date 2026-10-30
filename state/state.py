@@ -1,28 +1,59 @@
 from typing_extensions import TypedDict,Any,List
 
 
-from typing import TypedDict, Any
+from typing import TypedDict, Any,Optional
 
 
 class ResearchPaperState(TypedDict, total=False):
     artifacts: dict[str, Any]
     error: str
 
-class ResearchState(TypedDict):
+from typing import TypedDict, Optional
 
-    # User input
+
+
+from typing import TypedDict, Optional, Any
+
+
+class ResearchState(TypedDict, total=False):
+
+    # ========================================================
+    # USER INPUT
+    # ========================================================
+
     user_query: str
 
-    # Retrieval
-    retrieved_docs: List
+    # ========================================================
+    # RETRIEVAL
+    # ========================================================
 
-    # Agent outputs
-    analysis: str
-    critique: str
-
-    # Orchestration
-    next_agent: str
+    retrieved_chunks: list[dict[str, Any]]
     retrieval_count: int
 
-    # Final response
+    # ========================================================
+    # AGENT OUTPUTS
+    # ========================================================
+
+    analysis: str
+    critical_analysis: str
+    cited_analysis: str
+    citations: list[dict[str, Any]]
+
+    # ========================================================
+    # FINAL OUTPUT
+    # ========================================================
+
     final_answer: str
+
+    # ========================================================
+    # ORCHESTRATOR CONTROL
+    # ========================================================
+
+    next_agent: str
+    completed_agents: list[str]
+
+    # ========================================================
+    # ERROR HANDLING
+    # ========================================================
+
+    error: Optional[str]

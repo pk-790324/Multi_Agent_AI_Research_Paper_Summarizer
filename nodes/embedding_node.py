@@ -34,7 +34,8 @@ def embedding_node(
         **artifacts,
         "collection_name": result["collection_name"],
         "embedding": {
-            "embedding_model": result["embedding_model"],
+            "dense_model": result["dense_model"],
+            "sparse_model":result["sparse_model"],
             "vector_dimension": result["vector_dimension"],
             "indexed_chunks": result["indexed_chunks"],
         },

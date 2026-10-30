@@ -26,3 +26,5 @@ pydantic-settings
 uvicorn[standard]
 docling
 mineru[all]
+rank-bm25
+fastembed

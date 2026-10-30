@@ -26,94 +26,183 @@ class ChunkingService:
             encoding="utf-8"
         )
 
-        # Split at Markdown headings: #, ##, ###, etc.
-        sections = re.split(
-            r"(?=^#{1,6}\s+)",
-            markdown,
-            flags=re.MULTILINE,
-        )
+        # --------------------------------------------------
+        # 1. SPLIT MARKDOWN INTO PDF PAGES
+        # --------------------------------------------------
+
+        page_marker = "<!-- PAGE_BREAK -->"
+
+        has_page_markers = page_marker in markdown
+
+        if has_page_markers:
+            pages = markdown.split(page_marker)
+        else:
+            # Page information is unavailable.
+            pages = [markdown]
 
         chunks = []
         chunk_id = 1
 
-        for section_text in sections:
-            section_text = section_text.strip()
+        current_section = "Document"
 
-            if not section_text:
-                continue
+        # --------------------------------------------------
+        # 2. PROCESS EACH PAGE
+        # --------------------------------------------------
 
-            lines = section_text.splitlines()
+        for page_number, page_text in enumerate(
+            pages, start=1
+        ):
 
-            # Extract the heading and section body
-            if lines[0].startswith("#"):
-                heading = re.sub(
-                    r"^#{1,6}\s+",
-                    "",
-                    lines[0],
+            lines = page_text.splitlines()
+
+            section_bodies = []
+            current_body = []
+
+            # --------------------------------------------------
+            # 3. EXTRACT SECTION HEADINGS
+            # --------------------------------------------------
+
+            for line in lines:
+
+                if re.match(r"^#{1,6}\s+", line):
+
+                    # Save previous section content.
+                    if current_body:
+                        section_bodies.append(
+                            (
+                                current_section,
+                                "\n".join(current_body)
+                            )
+                        )
+
+                    current_section = re.sub(
+                        r"^#{1,6}\s+",
+                        "",
+                        line
+                    ).strip()
+
+                    current_body = []
+
+                else:
+                    current_body.append(line)
+
+            # Save the last section on this page.
+            if current_body:
+                section_bodies.append(
+                    (
+                        current_section,
+                        "\n".join(current_body)
+                    )
+                )
+
+            # --------------------------------------------------
+            # 4. CREATE CHUNKS FOR EACH SECTION
+            # --------------------------------------------------
+
+            for heading, body in section_bodies:
+
+                body = re.sub(
+                    r"\s+",
+                    " ",
+                    body
                 ).strip()
 
-                body = "\n".join(lines[1:]).strip()
-            else:
-                heading = "Document"
-                body = section_text
+                if not body:
+                    continue
 
-            # Clean up unnecessary whitespace
-            body = re.sub(r"\s+", " ", body).strip()
+                start = 0
 
-            if not body:
-                continue
+                while start < len(body):
 
-            # Split long sections; preserve section metadata
-            start = 0
-
-            while start < len(body):
-                end = min(start + chunk_size, len(body))
-
-                # Prefer a sentence boundary when possible
-                if end < len(body):
-                    sentence_end = body.rfind(
-                        ". ", start, end
+                    end = min(
+                        start + chunk_size,
+                        len(body)
                     )
 
-                    if sentence_end > start:
-                        end = sentence_end + 1
+                    # Prefer sentence boundaries.
+                    if end < len(body):
 
-                piece = body[start:end].strip()
+                        sentence_end = body.rfind(
+                            ". ",
+                            start,
+                            end
+                        )
 
-                if piece:
-                    chunks.append({
-                        "chunk_id": chunk_id,
-                        "paper_title": paper_title,
-                        "section": heading,
-                        "source_file": str(markdown_path),
-                        "text": piece,
-                        "char_count": len(piece),
-                        "created_at": datetime.now().isoformat(),
-                    })
+                        if sentence_end > start:
+                            end = sentence_end + 1
 
-                    chunk_id += 1
+                    piece = body[start:end].strip()
 
-                if end >= len(body):
-                    break
+                    if piece:
 
-                # Move forward while retaining overlap
-                start = max(end - overlap, start + 1)
+                        chunks.append({
 
-        # Save chunks as JSON
+                            "chunk_id": chunk_id,
+
+                            "paper_title": paper_title,
+
+                            "section": heading,
+
+                            "page_start": (
+                                page_number
+                                if has_page_markers
+                                else None
+                            ),
+
+                            "page_end": (
+                                page_number
+                                if has_page_markers
+                                else None
+                            ),
+
+                            "source_file": str(markdown_path),
+
+                            "text": piece,
+
+                            "char_count": len(piece),
+
+                            "created_at": datetime.now().isoformat(),
+
+                        })
+
+                        chunk_id += 1
+
+                    if end >= len(body):
+                        break
+
+                    # Preserve overlap.
+                    start = max(
+                        end - overlap,
+                        start + 1
+                    )
+
+        # --------------------------------------------------
+        # 5. SAVE CHUNKS AS JSON
+        # --------------------------------------------------
+
         output_dir = Path("chunks")
-        output_dir.mkdir(parents=True, exist_ok=True)
+
+        output_dir.mkdir(
+            parents=True,
+            exist_ok=True
+        )
 
         chunk_file = (
-            output_dir / f"{markdown_path.stem}_chunks.json"
+            output_dir /
+            f"{markdown_path.stem}_chunks.json"
         )
 
         chunk_file.write_text(
             json.dumps(
                 chunks,
                 indent=2,
-                ensure_ascii=False,
+                ensure_ascii=False
             ),
-            encoding="utf-8",
+            encoding="utf-8"
         )
+
+        print(f"Page markers detected: {has_page_markers}")
+        print(f"Total pages processed: {len(pages)}")
+        print(f"Total chunks generated: {len(chunks)}")
 
         return chunks, str(chunk_file)

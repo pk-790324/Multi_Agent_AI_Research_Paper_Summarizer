@@ -1,258 +1,6 @@
-
-# import json
-# from pathlib import Path
-
-# import gradio as gr
-
-# from graphs.ingestion_graphs import ingestion_graph
-
-
-
-
-# def run_ingestion(uploaded_file):
-#     """Run ingestion and stream live pipeline status to Gradio."""
-
-#     if uploaded_file is None:
-#         yield "Please upload a document first.", "{}", ""
-#         return
-#     markdown_text = ""
-#     chunk_text = ""
-
-#     stages = ["Upload", "Parsing", "Chunking", "Embeddings"]
-#     statuses = {stage: "Pending" for stage in stages}
-
-#     def render_status():
-#         icons = {
-#             "Pending": "⏳",
-#             "processing": "🔄",
-#             "completed": "✅",
-#             "failed": "❌",
-#         }
-
-#         lines = []
-
-#         for stage in stages:
-#             current = statuses[stage]
-#             if current == "Pending":
-#                 label = "Pending"
-#             elif current == "processing":
-#                 label = "Processing..."
-#             elif current == "completed":
-#                 label = "Completed"
-#             else:
-#                 label = "Failed"
-
-#             lines.append(f"{icons[current]} {stage}: {label}")
-
-#         return "\n".join(lines)
-
-#     initial_state = {
-#         "artifacts": {
-#             "uploaded_file_path": str(uploaded_file),
-#         },
-#         "error": "",
-#     }
-
-#     result = None
-#     pipeline_error = ""
-
-#     try:
-#         # Stream custom events and state updates from LangGraph
-#         for mode, data in ingestion_graph.stream(
-#             initial_state,
-#             stream_mode=["custom", "values"],
-#         ):
-#             if mode == "custom":
-#                 stage = data.get("stage")
-#                 status = data.get("status")
-
-#                 if stage in statuses and status:
-#                     statuses[stage] = status
-
-#                 pipeline_error = data.get("error", "") or pipeline_error
-
-#                 yield (
-#                     render_status(),
-#                     json.dumps({
-#                         "pipeline_status": statuses,
-#                         "message": "Pipeline is running...",
-#                     }, indent=2),
-#                     markdown_text,
-#                     chunk_text,
-#                 )
-#             elif mode == "values":
-#                 result = data
-
-#         if result is None:
-#             raise RuntimeError("The graph finished without returning state.")
-
-#         artifacts = result.get("artifacts", {})
-#         error = result.get("error", "") or pipeline_error
-
-#         if error:
-#             yield (
-#                 render_status() + f"\n\n❌ Error: {error}",
-#                 json.dumps({"error": error}, indent=2),
-#                 "",
-#             )
-#             return
-
-#         # Build final report
-#         report = {}
-
-#         for key, value in artifacts.items():
-#             if key in {"chunks", "embeddings", "vectors"}:
-#                 try:
-#                     report[f"{key}_count"] = len(value)
-#                 except TypeError:
-#                     report[key] = type(value).__name__
-#             elif key in {
-#                 "file_name",
-#                 "file_path",
-#                 "file_extension",
-#                 "file_size_bytes",
-#                 "markdown_path",
-#                 "chunk_file",
-#                 "chunk_count",
-#                 "embedding_count",
-#             }:
-#                 report[key] = value
-
-#         report["pipeline_status"] = statuses
-#         report["ingestion_status"] = "Completed"
-
-        
-#         markdown_path = artifacts.get("markdown_path")
-
-#         if markdown_path and Path(markdown_path).is_file():
-#             markdown_text = Path(markdown_path).read_text(
-#                 encoding="utf-8"
-#             )
-#         # Build a readable chunk preview
-#         chunks = artifacts.get("chunks", [])
-
-        
-
-#         if chunks:
-#             chunk_sections = []
-
-#             for chunk in chunks:
-#                 chunk_sections.append(
-#                     f"Chunk ID: {chunk.get('chunk_id', '')}\n"
-#                     f"Section: {chunk.get('section', 'Unknown')}\n"
-#                     f"Characters: {chunk.get('char_count', 0)}\n"
-#                     f"{'-' * 60}\n"
-#                     f"{chunk.get('text', '')}"
-#                 )
-
-#             chunk_text = "\n\n" + ("\n\n" + "=" * 60 + "\n\n").join(
-#                 chunk_sections)
-
-#         yield (
-#             render_status() + "\n\n🎉 Ingestion completed successfully!",
-#             json.dumps(report, indent=2, default=str),
-#             markdown_text,
-#             chunk_text,)
-#     except Exception as exc:
-#         yield (
-#             render_status() + f"\n\n❌ Pipeline error: {exc}",
-#             json.dumps({"error": str(exc)}, indent=2),
-#             markdown_text,
-#             chunk_text,
-#         )
-
-
-
-# with gr.Blocks(title="Research Paper Ingestion") as demo:
-
-#     gr.Markdown("# Research Paper Ingestion Pipeline")
-
-#     gr.Markdown(
-#         """
-#         Upload a research document and test your LangGraph ingestion
-#         pipeline: file validation, document parsing, chunking, and
-#         embedding generation.
-#         """
-#     )
-
-#     with gr.Row():
-#         with gr.Column(scale=1):
-#             uploaded_file = gr.File(
-#                 label="Upload Research Document",
-#                 file_types=[
-#                     ".pdf",
-#                     ".doc",
-#                     ".docx",
-#                     ".ppt",
-#                     ".pptx",
-#                     ".txt",
-#                     ".md",
-#                     ".rtf",
-#                 ],
-#                 type="filepath",
-#             )
-
-#             run_button = gr.Button(
-#                 "Run Data Ingestion",
-#                 variant="primary",
-#             )
-
-#             status_output = gr.Textbox(
-#                 label="Pipeline Status",
-#                 interactive=False,
-#                 lines=2,
-#             )
-
-#         with gr.Column(scale=1):
-#             report_output = gr.Code(
-#                 label="Ingestion Report",
-#                 language="json",
-#                 interactive=False,
-#             )
-
-    
-#     with gr.Row():
-#         with gr.Column(scale=1):
-#             markdown_output = gr.Textbox(
-#                 label="Parsed Markdown Preview",
-#                 lines=25,
-#                 interactive=False,
-#             )
-
-#         with gr.Column(scale=1):
-#             chunk_output = gr.Textbox(
-#                 label="Chunked Text Preview",
-#                 lines=25,
-#                 interactive=False,
-#             )
-
-
-#     run_button.click(
-#     fn=run_ingestion,
-#     inputs=[uploaded_file],
-#     outputs=[
-#         status_output,
-#         report_output,
-#         markdown_output,
-#         chunk_output,
-#     ],
-# )
-
-
-# if __name__ == "__main__":
-#     demo.launch(
-#             share=True
-#     )
-
-
-
-
-
-
-
 from pathlib import Path
 import json
-
+from graphs.research_graphs import research_graph
 import gradio as gr
 
 # Reuse your existing, working LangGraph ingestion pipeline.
@@ -349,7 +97,8 @@ def build_report(state, statuses):
         "collection_name": artifacts.get("collection_name"),
         "embedding_count": artifacts.get("embedding", {}).get("indexed_chunks", 0),
         "vector_dimension":artifacts.get("embedding",{}).get("vector_dimension",0),
-        "embedding_model":artifacts.get("embedding",{}).get("embedding_model",""),
+        "dense_model":artifacts.get("embedding",{}).get("dense_model",""),
+        "sparse_model":artifacts.get("embedding",{}).get("sparse_model",""),
         "error": state.get("error", ""),
     }
 
@@ -539,6 +288,236 @@ def list_uploaded_papers():
 
     return "\n".join(lines)
 
+# =========================================================
+# MULTI AGENT RESEARCH PAPER PIPELINE
+# =========================================================
+
+
+from datetime import datetime
+
+def run_research_pipeline(user_query: str):
+
+    agent_names = [
+        "Orchestrator",
+        "Retriever",
+        "Research Analyst",
+        "Critical Analyst",
+        "Citation Agent",
+        "Synthesis Writer",
+    ]
+
+    agent_counts = {
+        name: 0 for name in agent_names
+    }
+
+    agent_status = {
+        name: "Waiting" for name in agent_names
+    }
+
+    execution_logs = []
+
+    final_state = {
+        "user_query": user_query.strip(),
+        "retrieved_chunks": [],
+        "retrieval_count": 0,
+        "analysis": "",
+        "critical_analysis": "",
+        "cited_analysis": "",
+        "citations": [],
+        "final_answer": "",
+        "next_agent": "retriever",
+        "completed_agents": [],
+        "error": None,
+    }
+
+    def get_dashboard():
+
+        rows = []
+
+        for index, name in enumerate(agent_names, start=1):
+
+            rows.append([
+                index,
+                name,
+                agent_status[name],
+                agent_counts[name]
+            ])
+
+        completed = sum(
+            status == "Completed"
+            for status in agent_status.values()
+        )
+
+        failed = sum(
+            status == "Failed"
+            for status in agent_status.values()
+        )
+
+        progress = (
+            f"### Pipeline Progress: {completed}/{len(agent_names)} agents completed"
+        )
+
+        if failed:
+            progress += f" | ❌ {failed} failed"
+
+        return rows, progress
+
+    def get_log():
+        return "\n".join(execution_logs)
+
+    if not user_query or not user_query.strip():
+
+        yield (
+            "Please enter a research question.",
+            "",
+            "",
+            "",
+            "",
+            [],
+            get_dashboard()[0],
+            get_dashboard()[1],
+            ""
+        )
+        return
+
+    try:
+
+        yield (
+            "⏳ Initializing pipeline...",
+            "",
+            "",
+            "",
+            "",
+            [],
+            get_dashboard()[0],
+            get_dashboard()[1],
+            get_log()
+        )
+
+        for mode, event in research_graph.stream(
+            final_state,
+            config={"recursion_limit": 30},
+            stream_mode=["custom", "updates"]
+        ):
+
+            if mode == "custom":
+
+                agent = event.get("agent")
+                status = event.get("status")
+
+                if agent not in agent_status:
+                    continue
+
+                if status == "running":
+
+                    agent_counts[agent] += 1
+                    agent_status[agent] = "Running"
+
+                    timestamp = datetime.now().strftime("%H:%M:%S")
+
+                    execution_logs.append(
+                        f"🟡 `{timestamp}` **{agent}** started "
+                        f"(Execution #{agent_counts[agent]})"
+                    )
+
+                elif status == "completed":
+
+                    agent_status[agent] = "Completed"
+
+                    timestamp = datetime.now().strftime("%H:%M:%S")
+
+                    execution_logs.append(
+                        f"🟢 `{timestamp}` **{agent}** completed"
+                    )
+
+                elif status == "failed":
+
+                    agent_status[agent] = "Failed"
+
+                    timestamp = datetime.now().strftime("%H:%M:%S")
+
+                    execution_logs.append(
+                        f"🔴 `{timestamp}` **{agent}** failed: "
+                        f"{event.get('error', 'Unknown error')}"
+                    )
+
+                rows, progress = get_dashboard()
+
+                yield (
+                    "⚡ Pipeline is running...",
+                    final_state.get("final_answer", ""),
+                    final_state.get("analysis", ""),
+                    final_state.get("critical_analysis", ""),
+                    final_state.get("cited_analysis", ""),
+                    final_state.get("citations", []),
+                    rows,
+                    progress,
+                    get_log()
+                )
+
+            elif mode == "updates":
+
+                for node_name, node_update in event.items():
+
+                    if isinstance(node_update, dict):
+                        final_state.update(node_update)
+
+        # --------------------------------
+        # PIPELINE FINISHED
+        # --------------------------------
+
+        if final_state.get("error"):
+
+            status_message = (
+                f"❌ Pipeline failed: {final_state['error']}"
+            )
+
+        else:
+
+            status_message = (
+                "✅ Research pipeline completed successfully!"
+            )
+
+        rows, progress = get_dashboard()
+
+        yield (
+            status_message,
+            final_state.get("final_answer", ""),
+            final_state.get("analysis", ""),
+            final_state.get("critical_analysis", ""),
+            final_state.get("cited_analysis", ""),
+            final_state.get("citations", []),
+            rows,
+            progress,
+            get_log()
+        )
+
+    except Exception as error:
+
+        timestamp = datetime.now().strftime("%H:%M:%S")
+
+        execution_logs.append(
+            f"🔴 `{timestamp}` **Pipeline Error:** {str(error)}"
+        )
+
+        for agent in agent_names:
+
+            if agent_status[agent] == "Running":
+                agent_status[agent] = "Failed"
+
+        rows, progress = get_dashboard()
+
+        yield (
+            f"❌ Pipeline failed: {str(error)}",
+            "",
+            final_state.get("analysis", ""),
+            final_state.get("critical_analysis", ""),
+            final_state.get("cited_analysis", ""),
+            final_state.get("citations", []),
+            rows,
+            progress,
+            get_log()
+        )
 
 # =========================================================
 # PAGE NAVIGATION
@@ -567,11 +546,17 @@ def navigate(page):
 
 CSS = """
 .gradio-container {
-    max-width: 1600px !important;
+    max-width: 1480px !important;
+    padding: 20px !important;
 }
 
 #app-header {
-    margin-bottom: 12px;
+    margin-bottom: 18px;
+    padding: 18px 22px;
+    border: 1px solid var(--border-color-primary);
+    border-radius: 18px;
+    background: var(--background-fill-secondary);
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
 }
 
 #sidebar {
@@ -579,18 +564,70 @@ CSS = """
     top: 12px;
     height: calc(100vh - 30px);
     overflow-y: auto;
-    padding: 16px;
+    padding: 20px 16px;
     border: 1px solid var(--border-color-primary);
-    border-radius: 14px;
+    border-radius: 18px;
+    background: var(--background-fill-secondary);
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
 }
 
 #sidebar button {
+    display: flex;
+    justify-content: flex-start;
     text-align: left;
-    min-height: 44px;
+    width: 100%;
+    min-height: 46px;
+    padding: 0 14px;
+    border-radius: 12px;
+    font-weight: 600;
+    transition: background-color 160ms ease, transform 160ms ease;
+}
+
+#sidebar button:hover {
+    transform: translateX(2px);
+}
+
+#sidebar button:focus-visible,
+#main-content button:focus-visible {
+    outline: 3px solid #93c5fd;
+    outline-offset: 2px;
 }
 
 #main-content {
-    padding: 8px 18px;
+    min-width: 0;
+    padding: 8px 18px 24px;
+}
+
+#main-content button {
+    min-height: 44px;
+    padding: 0 18px;
+    border-radius: 12px;
+    font-weight: 600;
+    transition: background-color 160ms ease, transform 160ms ease;
+}
+
+#main-content button:hover {
+    transform: translateY(-1px);
+}
+
+.gradio-container button.primary {
+    background: #2563eb;
+    border-color: #2563eb;
+    color: #ffffff;
+}
+
+.gradio-container button.primary:hover {
+    background: #1d4ed8;
+    border-color: #1d4ed8;
+}
+
+.feature-card {
+    height: 100%;
+    padding: 20px;
+    border: 1px solid var(--border-color-primary);
+    border-radius: 18px;
+    background: var(--background-fill-secondary);
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
 }
 
 .page-title {
@@ -603,6 +640,31 @@ CSS = """
 
 .status-box textarea {
     font-family: monospace !important;
+}
+
+@media (max-width: 800px) {
+    .gradio-container {
+        padding: 12px !important;
+    }
+
+    .gradio-container .row {
+        flex-wrap: wrap !important;
+    }
+
+    #sidebar {
+        position: static;
+        height: auto;
+        max-height: none;
+        margin-bottom: 12px;
+    }
+
+    #main-content {
+        padding: 8px 4px 20px;
+    }
+
+    #app-header {
+        padding: 16px;
+    }
 }
 
 """
@@ -639,7 +701,7 @@ with gr.Blocks(
 
             home_btn = gr.Button(
                 "🏠  Home",
-                variant="primary",
+                variant="secondary",
             )
 
             ingestion_btn = gr.Button(
@@ -688,7 +750,7 @@ with gr.Blocks(
                 )
 
                 with gr.Row():
-                    with gr.Column():
+                    with gr.Column(elem_classes=["feature-card"]):
                         gr.Markdown(
                             "### 📄 Data Ingestion\n"
                             "Validate and parse documents, split text "
@@ -700,7 +762,7 @@ with gr.Blocks(
                             variant="primary",
                         )
 
-                    with gr.Column():
+                    with gr.Column(elem_classes=["feature-card"]):
                         gr.Markdown(
                             "### 🤖 Multi-Agent Research\n"
                             "A dedicated workspace for future research "
@@ -720,7 +782,7 @@ with gr.Blocks(
                     "| Parsing | Convert document to Markdown | Ready |\n"
                     "| Chunking | Split Markdown into chunks | Ready |\n"
                     "| Embeddings | Generate vector representations | Ready |\n"
-                    "| Multi-Agent | Summarize and analyze research | Planned |"
+                    "| Multi-Agent | Summarize and analyze research | Ready |"
                 )
 
                 gr.Markdown(
@@ -810,53 +872,141 @@ with gr.Blocks(
             # =========================
 
             with gr.Column(visible=False) as agents_page:
-                gr.Markdown("# 🤖 Multi-Agent Research Pipeline")
-
                 gr.Markdown(
-                    "This workspace is ready for your next development "
-                    "milestone. The multi-agent graph has not been "
-                    "implemented yet."
+                    """
+                    # 🤖 Multi-Agent Research Workspace
+
+                    Ask questions about your indexed research papers.
+                    Multiple AI agents will collaborate to generate
+                    an evidence-based research report.
+                    """
                 )
 
-                with gr.Row():
-                    with gr.Column():
-                        gr.Markdown(
-                            "### 1. Parser Agent\n"
-                            "Extract sections, tables, and useful "
-                            "research-paper content."
-                        )
+                # --------------------------------
+                # RESEARCH QUESTION
+                # --------------------------------
 
-                    with gr.Column():
-                        gr.Markdown(
-                            "### 2. Summarizer Agent\n"
-                            "Produce a structured summary of the paper."
-                        )
+                gr.Markdown("## 🔍 Research Question")
 
-                with gr.Row():
-                    with gr.Column():
-                        gr.Markdown(
-                            "### 3. Critical Analyst Agent\n"
-                            "Evaluate methodology, assumptions, "
-                            "limitations, and evidence."
-                        )
-
-                    with gr.Column():
-                        gr.Markdown(
-                            "### 4. Synthesis Writer\n"
-                            "Combine findings into a coherent final report."
-                        )
-
-                gr.Markdown(
-                    "### Planned workflow\n\n"
-                    "`Orchestrator → Parser → Summarizer → "
-                    "Critical Analyst → Synthesis Writer`\n\n"
-                    "These are planned components, not active agents yet."
+                query_input = gr.Textbox(
+                    label="Enter your research question",
+                    placeholder=(
+                        "Example: Explain the abstract of "
+                        "The Era of 1-bit LLMs."
+                    ),
+                    lines=3
                 )
 
-                gr.Button(
-                    "Multi-Agent Pipeline — Coming Soon",
+                run_button = gr.Button(
+                    "🚀 Run Research Pipeline",
+                    variant="primary"
+                )
+
+                
+                # --------------------------------
+                # LIVE EXECUTION TRACE
+                # --------------------------------
+
+                gr.Markdown("---")
+                gr.Markdown("## ⚡ Agent Execution Monitor")
+
+                pipeline_progress = gr.Markdown(
+                    "**Progress:** Waiting to start"
+                )
+
+                execution_trace = gr.Dataframe(
+                    headers=[
+                        "Step",
+                        "Agent",
+                        "Status",
+                        "Executions"
+                    ],
+                    datatype=[
+                        "number",
+                        "str",
+                        "str",
+                        "number"
+                    ],
+                    value=[
+                        [1, "Orchestrator", "Waiting", 0],
+                        [2, "Retriever", "Waiting", 0],
+                        [3, "Research Analyst", "Waiting", 0],
+                        [4, "Critical Analyst", "Waiting", 0],
+                        [5, "Citation Agent", "Waiting", 0],
+                        [6, "Synthesis Writer", "Waiting", 0],
+                    ],
                     interactive=False,
+                    wrap=True,
+                    label="Agent Execution Status"
                 )
+
+                
+
+                # --------------------------------
+                # INDIVIDUAL AGENT OUTPUTS
+                # --------------------------------
+
+                gr.Markdown("---")
+                gr.Markdown("## 🧠 Agent Analysis")
+
+                with gr.Accordion("1. Research Analyst", open=False):
+                    analysis_output = gr.Markdown()
+
+                with gr.Accordion("2. Critical Analyst", open=False):
+                    critical_output = gr.Markdown()
+
+                with gr.Accordion("3. Citation Agent", open=False):
+                    cited_analysis_output = gr.Markdown()
+
+                # --------------------------------
+                # REFERENCES
+                # --------------------------------
+
+                gr.Markdown("---")
+                gr.Markdown("## 📚 Research References")
+
+                citations_output = gr.JSON(
+                    label="Verified Citation Records"
+                )
+                
+                # --------------------------------
+                # PIPELINE STATUS
+                # --------------------------------
+
+                pipeline_status = gr.Markdown(
+                    "Waiting for your research question..."
+                )
+                
+                # --------------------------------
+                # FINAL ANSWER
+                # --------------------------------
+
+                gr.Markdown("---")
+                gr.Markdown("## 📄 Final Research Report")
+
+                final_answer = gr.Markdown()
+
+
+                # --------------------------------
+                # PIPELINE EXECUTION
+                # --------------------------------
+
+                run_button.click(
+                fn=run_research_pipeline,
+                inputs=[query_input],
+                outputs=[
+                    pipeline_status,
+                    final_answer,
+                    analysis_output,
+                    critical_output,
+                    cited_analysis_output,
+                    citations_output,
+                    execution_trace,
+                    pipeline_progress,
+                    #execution_log
+                ]
+            )
+
 
             # =========================
             # PAGE 4: RESEARCH PAPERS
