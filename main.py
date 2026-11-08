@@ -11,328 +11,204 @@ import subprocess
 import sys
 import json
 from pathlib import Path
-# =========================================================
-# CONFIGURATION
-# =========================================================
-
-PROJECT_DIR = Path(__file__).resolve().parent
-UPLOADED_DIR = PROJECT_DIR / "data" / "uploaded_papers"
-
-SUPPORTED_FILES = [
-    ".pdf",
-    ".doc",
-    ".docx",
-    ".ppt",
-    ".pptx",
-    ".txt",
-    ".md",
-    ".rtf",
-]
-
-STAGES = ["Upload", "Parsing", "Chunking", "Embeddings"]
-
-PREVIEW_CHAR_LIMIT = 20000
-CHUNK_PREVIEW_LIMIT = 20
+from api.ingestion_service import render_status
 
 
-# =========================================================
-# HELPER FUNCTIONS
-# =========================================================
 
-def read_markdown(artifacts):
-    """Read the Markdown produced by the parser node."""
-    markdown_path = artifacts.get("markdown_path")
-
-    if not markdown_path:
-        return ""
-
-    path = Path(markdown_path)
-
-    if not path.is_file():
-        return ""
-
-    try:
-        return path.read_text(encoding="utf-8")[:PREVIEW_CHAR_LIMIT]
-    except (OSError, UnicodeError) as exc:
-        return f"Could not read Markdown preview: {exc}"
+import requests
+import json
+from pathlib import Path
 
 
-def format_chunks(chunks):
-    """Format chunk dictionaries for the Gradio preview."""
-    if not chunks:
-        return ""
+from config import UPLOADED_DIR,SUPPORTED_FILES,STAGES,PROJECT_DIR
 
-    sections = []
+API_URL = "http://127.0.0.1:8001/ingestion/upload"
 
-    for chunk in chunks[:CHUNK_PREVIEW_LIMIT]:
-        chunk_text = chunk.get("text", "")
-
-        sections.append(
-            f"Chunk ID: {chunk.get('chunk_id', 'Unknown')}\n"
-            f"Section: {chunk.get('section', 'Unknown')}\n"
-            f"Characters: {chunk.get('char_count', len(chunk_text))}\n"
-            f"{'-' * 60}\n"
-            f"{chunk_text}"
-        )
-
-    result = ("\n\n" + "=" * 60 + "\n\n").join(sections)
-
-    if len(chunks) > CHUNK_PREVIEW_LIMIT:
-        result += (
-            f"\n\nShowing {CHUNK_PREVIEW_LIMIT} of "
-            f"{len(chunks)} chunks."
-        )
-
-    return result[:PREVIEW_CHAR_LIMIT]
-
-
-def build_report(state, statuses):
-    """Create a readable report without exposing full vectors."""
-    artifacts = state.get("artifacts", {})
-    chunks = artifacts.get("chunks", [])
-
-    return {
-        "pipeline_status": statuses,
-        "file_name": artifacts.get("file_name"),
-        "file_path": artifacts.get("file_path"),
-        "markdown_path": artifacts.get("markdown_path"),
-        "chunk_file": artifacts.get("chunk_file"),
-        "chunk_size":artifacts.get("chunk_size"),
-        "chunk_overlap":artifacts.get("chunk_overlap"),
-        "total_chunks": len(chunks) if isinstance(chunks, list) else None,
-        "collection_name": artifacts.get("collection_name"),
-        "embedding_count": artifacts.get("embedding", {}).get("indexed_chunks", 0),
-        "vector_dimension":artifacts.get("embedding",{}).get("vector_dimension",0),
-        "dense_model":artifacts.get("embedding",{}).get("dense_model",""),
-        "sparse_model":artifacts.get("embedding",{}).get("sparse_model",""),
-        "error": state.get("error", ""),
-    }
-
-
-def render_status(statuses, message=""):
-    """Render the current state of each ingestion stage."""
-    icons = {
-        "Pending": "⏳",
-        "processing": "🔄",
-        "completed": "✅",
-        "failed": "❌",
-    }
-
-    lines = [
-        f"{icons.get(status, '•')} {stage}: {status.title()}"
-        for stage, status in statuses.items()
-    ]
-
-    if message:
-        lines.append("")
-        lines.append(message)
-
-    return "\n".join(lines)
-
-
-# =========================================================
-# INGESTION PIPELINE CALLBACK
-# =========================================================
 
 def run_ingestion(uploaded_file):
     """
-    Run the existing LangGraph ingestion workflow.
-
-    Every yield returns four values:
-    status, report, Markdown preview, chunk preview.
+    Call FastAPI ingestion endpoint and stream
+    progress updates to Gradio.
     """
 
-    statuses = {stage: "Pending" for stage in STAGES}
-    markdown_text = ""
-    chunk_text = ""
-    pipeline_error = ""
-    result = None
-
-    def outputs(message=""):
-        current_state = result or {}
-        report = build_report(current_state, statuses)
-
-        if pipeline_error:
-            report["error"] = pipeline_error
-
-        return (
-            render_status(statuses, message),
-            json.dumps(report, indent=2, default=str),
-            markdown_text,
-            chunk_text,
-        )
+    statuses = {
+        stage: "Pending"
+        for stage in STAGES
+    }
 
     if uploaded_file is None:
         yield (
             "Please upload a document first.",
             "{}",
             "",
-            "",
+            ""
         )
         return
 
-    # Gradio File(type="filepath") normally provides a filepath string.
-    file_path = str(uploaded_file)
+    file_path = Path(uploaded_file)
 
-    initial_state = {
-        "artifacts": {
-            "uploaded_file_path": file_path,
-        },
-        "error": "",
-    }
+    markdown_text = ""
+    chunk_text = ""
+    report = {}
 
     try:
-        # The graph is responsible for uploading/saving, parsing,
-        # chunking, and generating embeddings.
-        for mode, data in ingestion_graph.stream(
-            initial_state,
-            stream_mode=["custom", "values"],
-        ):
 
-            if mode == "custom":
-                stage = data.get("stage")
-                status = data.get("status")
+        # Open the document and send it to FastAPI.
+        with file_path.open("rb") as file:
 
-                if stage in statuses and status:
-                    statuses[stage] = status
-
-                if status == "failed":
-                    pipeline_error = (
-                        data.get("error")
-                        or f"{stage} stage failed."
+            response = requests.post(
+                API_URL,
+                files={
+                    "file": (
+                        file_path.name,
+                        file,
+                        "application/octet-stream"
                     )
-
-                yield outputs("Pipeline is running...")
-
-            elif mode == "values":
-                # Keep the latest graph state.
-                result = data
-
-                artifacts = result.get("artifacts", {})
-
-                # Refresh the Markdown preview as soon as parsing
-                # has produced its output.
-                if artifacts.get("markdown_path"):
-                    markdown_text = read_markdown(artifacts)
-
-                # Refresh the chunk preview as soon as chunking ends.
-                chunks = artifacts.get("chunks", [])
-
-                if chunks:
-                    chunk_text = format_chunks(chunks)
-
-                graph_error = result.get("error", "")
-
-                if graph_error:
-                    pipeline_error = graph_error
-
-                yield outputs("Pipeline is running...")
-
-        if result is None:
-            raise RuntimeError(
-                "The ingestion graph finished without returning state."
+                },
+                headers={
+                    "Accept": "text/event-stream"
+                },
+                stream=True,
+                timeout=(10, None)
             )
 
-        final_error = result.get("error", "") or pipeline_error
+            response.raise_for_status()
 
-        if final_error:
-            yield outputs(f"❌ Pipeline error: {final_error}")
-            return
+            # Receive Server-Sent Events from FastAPI.
+            for line in response.iter_lines(
+                decode_unicode=True
+            ):
 
-        # Mark all stages complete after successful graph execution.
-        # This also accommodates graphs whose final custom event
-        # was not emitted for a particular stage.
-        for stage in STAGES:
-            statuses[stage] = "completed"
+                if not line:
+                    continue
 
-        artifacts = result.get("artifacts", {})
+                if isinstance(line, bytes):
+                    line = line.decode("utf-8")
 
-        if artifacts.get("markdown_path"):
-            markdown_text = read_markdown(artifacts)
+                if not line.startswith("data:"):
+                    continue
 
-        if artifacts.get("chunks"):
-            chunk_text = format_chunks(artifacts["chunks"])
+                event_data = line[len("data:"):].strip()
 
-        yield outputs("🎉 Ingestion completed successfully!")
+                try:
+                    event = json.loads(event_data)
+                except json.JSONDecodeError:
+                    continue
+
+                # Update pipeline statuses.
+                statuses.update(
+                    event.get("status", {})
+                )
+
+                # Update report.
+                report = event.get("report", {})
+
+                # Update previews.
+                markdown_text = event.get(
+                    "markdown_preview",
+                    markdown_text
+                )
+
+                chunk_text = event.get(
+                    "chunk_preview",
+                    chunk_text
+                )
+
+                message = event.get(
+                    "message",
+                    "Pipeline is running..."
+                )
+
+                # Send updates to Gradio UI.
+                yield (
+                    render_status(statuses, message),
+                    json.dumps(
+                        report,
+                        indent=2,
+                        default=str
+                    ),
+                    markdown_text,
+                    chunk_text
+                )
+
+    except requests.exceptions.RequestException as exc:
+
+        error_message = f"API request failed: {exc}"
+
+        yield (
+            render_status(
+                statuses,
+                f"❌ {error_message}"
+            ),
+            json.dumps(
+                {"error": error_message},
+                indent=2
+            ),
+            markdown_text,
+            chunk_text
+        )
 
     except Exception as exc:
-        pipeline_error = f"{type(exc).__name__}: {exc}"
 
-        # Preserve the last known state and previews on failure.
-        yield outputs(f"❌ Pipeline error: {pipeline_error}")
+        error_message = (
+            f"{type(exc).__name__}: {exc}"
+        )
+
+        yield (
+            render_status(
+                statuses,
+                f"❌ {error_message}"
+            ),
+            json.dumps(
+                {"error": error_message},
+                indent=2
+            ),
+            markdown_text,
+            chunk_text
+        )
 
 
 # =========================================================
 # RESEARCH PAPERS PAGE
 # =========================================================
 
+import requests
+
+PAPERS_API_URL = "http://127.0.0.1:8001/papers/uploaded"
+
+
 def list_uploaded_papers():
-    """List files saved by the existing upload service."""
-    if not UPLOADED_DIR.exists():
-        return (
-            "No uploaded papers found yet.\n\n"
-            f"Expected directory: `{UPLOADED_DIR}`"
+
+    try:
+        response = requests.get(
+            PAPERS_API_URL,
+            timeout=10
         )
 
-    files = sorted(
-        (
-            path for path in UPLOADED_DIR.iterdir()
-            if path.is_file()
-        ),
-        key=lambda path: path.stat().st_mtime,
-        reverse=True,
-    )
+        response.raise_for_status()
 
-    if not files:
-        return "No research papers have been uploaded yet."
+        data = response.json()
 
-    lines = ["## Uploaded Research Papers", ""]
+        if not data["files"]:
+            return "No research papers have been uploaded yet."
 
-    for path in files:
-        size_kb = path.stat().st_size / 1024
-        lines.append(f"- **{path.name}** — {size_kb:.1f} KB")
+        lines = ["## Uploaded Research Papers", ""]
 
-    return "\n".join(lines)
+        for paper in data["files"]:
 
-# =========================================================
-# Converting Retriever JSON to Markdown
-# =========================================================
+            lines.append(
+                f"- **{paper['filename']}** — "
+                f"{paper['size_kb']:.1f} KB"
+            )
 
-def format_retrieved_chunks(chunks):
+        lines.append("")
+        lines.append(f"**Total papers:** {data['total_files']}")
 
-    if not chunks:
-        return "### 📚 No research chunks retrieved."
+        return "\n".join(lines)
 
-    markdown = "## 📚 Retrieved Research Chunks\n\n"
+    except requests.exceptions.RequestException as exc:
 
-    markdown += f"**Total Chunks Retrieved:** {len(chunks)}\n\n"
-
-    markdown += "---\n\n"
-
-    for chunk in chunks:
-
-        rank = chunk.get("rank", "N/A")
-        score = chunk.get("score", 0)
-        paper_title = chunk.get("paper_title", "Unknown Paper")
-        section = chunk.get("section", "Unknown Section")
-        page_start = chunk.get("page_start", "N/A")
-        page_end = chunk.get("page_end", "N/A")
-        content = chunk.get("page_content", "")
-        source_file = chunk.get("source_file", "Unknown Source")
-        chunk_id = chunk.get("chunk_id", "N/A")
-
-        markdown += f"### 🔹 Rank {rank}\n\n"
-        markdown += f"**Paper:** {paper_title}\n\n"
-        markdown += f"**Section:** {section}\n\n"
-        markdown += f"**Relevance Score:** `{score:.4f}`\n\n"
-        markdown += f"**Pages:** {page_start} - {page_end}\n\n"
-        markdown += f"**Chunk ID:** `{chunk_id}`\n\n"
-        markdown += f"**Source File:** `{source_file}`\n\n"
-        markdown += "**Content:**\n\n"
-        markdown += f"> {content}\n\n"
-        markdown += "---\n\n"
-
-    return markdown
+        return f"❌ Unable to retrieve uploaded papers: {exc}"
 
 
 # =========================================================
@@ -340,241 +216,154 @@ def format_retrieved_chunks(chunks):
 # =========================================================
 
 
-from datetime import datetime
+
+import requests
+import json
+
+
+RESEARCH_API_URL = "http://127.0.0.1:8001/research/run"
+
 
 def run_research_pipeline(user_query: str):
-
-    agent_names = [
-        "Orchestrator",
-        "Retriever",
-        "Research Analyst",
-        "Critical Analyst",
-        "Citation Agent",
-        "Synthesis Writer",
-    ]
-
-    agent_counts = {
-        name: 0 for name in agent_names
-    }
-
-    agent_status = {
-        name: "Waiting" for name in agent_names
-    }
-
-    execution_logs = []
-
-    final_state = {
-        "user_query": user_query.strip(),
-        "retrieved_chunks": [],
-        "retrieval_count": 0,
-        "retrieval_attempts": 0,
-        "analyst_attempts": 0,
-        "critic_attempts": 0,
-        "max_critic_attempts": MAX_AGENT_ATTEMPTS,
-        "analysis": "",
-        "critical_analysis": "",
-        "cited_analysis": "",
-        "citations": [],
-        "final_answer": "",
-        "next_agent": "retriever",
-        "completed_agents": [],
-        "error": None,
-    }
-
-    def get_dashboard():
-
-        rows = []
-
-        for index, name in enumerate(agent_names, start=1):
-
-            rows.append([
-                index,
-                name,
-                agent_status[name],
-                agent_counts[name]
-            ])
-
-        completed = sum(
-            status == "Completed"
-            for status in agent_status.values()
-        )
-
-        failed = sum(
-            status == "Failed"
-            for status in agent_status.values()
-        )
-
-        progress = (
-            f"### Pipeline Progress: {completed}/{len(agent_names)} agents completed"
-        )
-
-        if failed:
-            progress += f" | ❌ {failed} failed"
-
-        return rows, progress
-
-    def get_log():
-        return "\n".join(execution_logs)
 
     if not user_query or not user_query.strip():
 
         yield (
             "Please enter a research question.",
             "",
-            [],
+            "### No research chunks retrieved.",
             "",
             "",
             "",
             [],
-            get_dashboard()[0],
-            get_dashboard()[1],
-            ""
+            [],
+            "Pipeline Progress: 0/6 agents completed"
         )
         return
 
     try:
 
+        # Send research query to FastAPI.
+        with requests.post(
+            RESEARCH_API_URL,
+            json={"user_query": user_query.strip()},
+            headers={"Accept": "text/event-stream"},
+            stream=True,
+            timeout=(10, None)
+        ) as response:
+
+            response.raise_for_status()
+
+            # Read live SSE events.
+            for line in response.iter_lines(
+                decode_unicode=True
+            ):
+
+                if not line:
+                    continue
+
+                if isinstance(line, bytes):
+                    line = line.decode("utf-8")
+
+                if not line.startswith("data:"):
+                    continue
+
+                event_data = line[len("data:"):].strip()
+
+                try:
+                    event = json.loads(event_data)
+                except json.JSONDecodeError:
+                    continue
+
+                # Extract API response.
+                message = event.get(
+                    "message",
+                    "Research pipeline is running..."
+                )
+
+                final_answer = event.get("final_answer", "")
+
+                retrieved_chunks = event.get(
+                    "retrieved_chunks_markdown",
+                    ""
+                )
+
+                analysis = event.get("analysis", "")
+
+                critical_analysis = event.get(
+                    "critical_analysis",
+                    ""
+                )
+
+                cited_analysis = event.get(
+                    "cited_analysis",
+                    ""
+                )
+
+                citations = event.get("citations", [])
+
+                dashboard = event.get(
+                    "agent_dashboard",
+                    []
+                )
+
+                progress = event.get(
+                    "pipeline_progress",
+                    ""
+                )
+
+                # logs = "\n".join(
+                #     event.get("execution_logs", [])
+                # )
+
+                # Update all Gradio components.
+                yield (
+                    message,
+                    final_answer,
+                    retrieved_chunks,
+                    analysis,
+                    critical_analysis,
+                    cited_analysis,
+                    citations,
+                    dashboard,
+                    progress,
+                    #logs
+                )
+
+    except requests.exceptions.RequestException as exc:
+
+        error_message = f"Research API error: {exc}"
+
         yield (
-            "⏳ Initializing pipeline...",
+            f"❌ {error_message}",
             "",
             "",
             "",
             "",
             "",
             [],
-            get_dashboard()[0],
-            get_dashboard()[1],
-            get_log()
+            [],
+            "Pipeline failed"
         )
 
-        for mode, event in research_graph.stream(
-            final_state,
-            config={"recursion_limit": 30},
-            stream_mode=["custom", "updates"]
-        ):
+    except Exception as exc:
 
-            if mode == "custom":
-
-                agent = event.get("agent")
-                status = event.get("status")
-
-                if agent not in agent_status:
-                    continue
-
-                if status == "running":
-
-                    agent_counts[agent] += 1
-                    agent_status[agent] = "Running"
-
-                    timestamp = datetime.now().strftime("%H:%M:%S")
-
-                    execution_logs.append(
-                        f"🟡 `{timestamp}` **{agent}** started "
-                        f"(Execution #{agent_counts[agent]})"
-                    )
-
-                elif status == "completed":
-
-                    agent_status[agent] = "Completed"
-
-                    timestamp = datetime.now().strftime("%H:%M:%S")
-
-                    execution_logs.append(
-                        f"🟢 `{timestamp}` **{agent}** completed"
-                    )
-
-                elif status == "failed":
-
-                    agent_status[agent] = "Failed"
-
-                    timestamp = datetime.now().strftime("%H:%M:%S")
-
-                    execution_logs.append(
-                        f"🔴 `{timestamp}` **{agent}** failed: "
-                        f"{event.get('error', 'Unknown error')}"
-                    )
-
-                rows, progress = get_dashboard()
-
-                yield (
-                    "⚡ Pipeline is running...",
-                    final_state.get("final_answer", ""),
-                    format_retrieved_chunks(final_state.get("retrieved_chunks",[])),
-                    final_state.get("analysis", ""),
-                    final_state.get("critical_analysis", ""),
-                    final_state.get("cited_analysis", ""),
-                    final_state.get("citations", []),
-                    rows,
-                    progress,
-                    get_log()
-                )
-
-            elif mode == "updates":
-
-                for node_name, node_update in event.items():
-
-                    if isinstance(node_update, dict):
-                        final_state.update(node_update)
-
-        # --------------------------------
-        # PIPELINE FINISHED
-        # --------------------------------
-
-        if final_state.get("error"):
-
-            status_message = (
-                f"❌ Pipeline failed: {final_state['error']}"
-            )
-
-        else:
-
-            status_message = (
-                "✅ Research pipeline completed successfully!"
-            )
-
-        rows, progress = get_dashboard()
+        error_message = (
+            f"{type(exc).__name__}: {exc}"
+        )
 
         yield (
-            status_message,
-            final_state.get("final_answer", ""),
-            format_retrieved_chunks(final_state.get("retrieved_chunks",[])),
-            final_state.get("analysis", ""),
-            final_state.get("critical_analysis", ""),
-            final_state.get("cited_analysis", ""),
-            final_state.get("citations", []),
-            rows,
-            progress,
-            get_log()
-        )
-
-    except Exception as error:
-
-        timestamp = datetime.now().strftime("%H:%M:%S")
-
-        execution_logs.append(
-            f"🔴 `{timestamp}` **Pipeline Error:** {str(error)}"
-        )
-
-        for agent in agent_names:
-
-            if agent_status[agent] == "Running":
-                agent_status[agent] = "Failed"
-
-        rows, progress = get_dashboard()
-
-        yield (
-            f"❌ Pipeline failed: {str(error)}",
+            f"❌ {error_message}",
             "",
-            format_retrieved_chunks(final_state.get("retrieved_chunks",[])),
-            final_state.get("analysis", ""),
-            final_state.get("critical_analysis", ""),
-            final_state.get("cited_analysis", ""),
-            final_state.get("citations", []),
-            rows,
-            progress,
-            get_log()
+            "",
+            "",
+            "",
+            "",
+            [],
+            [],
+            "Pipeline failed"
         )
-        
+
         
 # =========================================================
 # RETRIEVER EVALUATION CODE

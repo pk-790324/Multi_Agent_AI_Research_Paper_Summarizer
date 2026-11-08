@@ -6,7 +6,7 @@ from langchain_core.messages import SystemMessage, HumanMessage
 
 from state.state import ResearchState
 from llm.llm import llm
-
+from config import MAX_AGENT_ATTEMPTS
 
 VALID_AGENTS = {
     "retriever",
@@ -16,7 +16,7 @@ VALID_AGENTS = {
     "synthesizer",
 }
 
-MAX_AGENT_ATTEMPTS = 5
+
 
 
 def parse_routing_response(response):

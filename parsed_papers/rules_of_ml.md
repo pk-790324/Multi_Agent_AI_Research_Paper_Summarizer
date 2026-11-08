@@ -52,6 +52,10 @@ Rule   #16:   Plan   to   launch   and   iterate.
 
 Rule   #17:   Start   with   directly   observed   and   reported   features   as   opposed   to   learned features.
 
+
+<!-- PAGE_BREAK -->
+
+
 Rule   #18:   Explore   with   features   of   content   that   generalize   across   contexts.
 
 Rule   #19:   Use   very   specific   features   when   you   can.
@@ -138,6 +142,10 @@ Rule   #43:   Your   friends   tend   to   be   the   same   a
 
 tend   not   to   be.
 
+
+<!-- PAGE_BREAK -->
+
+
 Related   Work Acknowledgements Appendix YouTube   Overview Google   Play   Overview Google   Plus   Overview
 
 ## Terminology
@@ -170,6 +178,10 @@ do   machine   learning   like   the   great   engineer   you   
 
 1    Google­specific   terminology.
 
+
+<!-- PAGE_BREAK -->
+
+
 Most   of   the   problems   you   will   face   are,   in   fact,   engineering   problems.   Even   with   all   the resources   of   a   great   machine   learning   expert,   most   of   the   gains   come   from   great   features,   not great   machine   learning   algorithms.   So,   the   basic   approach   is:
 
 1. make   sure   your   pipeline   is   solid   end   to   end
@@ -197,6 +209,10 @@ Machine   learning   is   cool,   but   it   requires   data.   
 
 For   instance,   if   you   are   ranking   apps   in   an   app   marketplace,   you   could   use   the   install   rate   or number   of   installs.   If   you   are   detecting   spam,   filter   out   publishers   that   have   sent   spam   before. Don't   be   afraid   to   use   human   editing   either.   If   you   need   to   rank   contacts,   rank   the   most   recently used   highest   (or   even   rank   alphabetically).   If   machine   learning   is   not   absolutely   required   for   your product,   don't   use   it   until   you   have   data.
 
+
+<!-- PAGE_BREAK -->
+
+
 ## Rule   #2:   First,   design   and   implement   metrics.
 
 Before   formalizing   what   your   machine   learning   system   will   do,   track   as   much   as   possible   in   your current   system.   Do   this   for   the   following   reasons:
@@ -221,6 +237,10 @@ Focus   on   your   system   infrastructure   for   your   first 
 ## Rule   #4:   Keep   the   first   model   simple   and   get   the   infrastructure   right.
 
 The   first   model   provides   the   biggest   boost   to   your   product,   so   it   doesn't   need   to   be   fancy.   But you   will   run   into   many   more   infrastructure   issues   than   you   expect.   Before   anyone   can   use   your fancy   new   machine   learning   system,   you   have   to   determine:
+
+
+<!-- PAGE_BREAK -->
+
 
 1. How   to   get   examples   to   your   learning   algorithm.
 2. A   first   cut   as   to   what   'good'   and   'bad'   mean   to   your   system.
@@ -247,6 +267,10 @@ Machine   learning   has   an   element   of   unpredictability,  
 
 Often   we   create   a   pipeline   by   copying   an   existing   pipeline   (i.e.   cargo   cult   programming),   and   the old   pipeline   drops   data   that   we   need   for   the   new   pipeline.   For   example,   the   pipeline   for   Google Plus   What's   Hot   drops   older   posts   (because   it   is   trying   to   rank   fresh   posts).   This   pipeline   was copied   to   use   for   Google   Plus   Stream,   where   older   posts   are   still   meaningful,   but   the   pipeline was   still   dropping   old   posts.   Another   common   pattern   is   to   only   log   data   that   was   seen   by   the user.   Thus,   this   data   is   useless   if   we   want   to   model   why   a   particular   post   was   not   seen   by   the user,   because   all   the   negative   examples   have   been   dropped.   A   similar   issue   occurred   in   Play. While   working   on   Play   Apps   Home,   a   new   pipeline   was   created   that   also   contained   examples from   two   other   landing   pages   (Play   Games   Home   and   Play   Home   Home)   without   any   feature   to disambiguate   where   each   example   came   from.
 
+
+<!-- PAGE_BREAK -->
+
+
 ## Rule   #7:   Turn   heuristics   into   features,   or   handle   them   externally.
 
 Usually   the   problems   that   machine   learning   is   trying   to   solve   are   not   completely   new.   There   is an   existing   system   for   ranking,   or   classifying,   or   whatever   problem   you   are   trying   to   solve.   This means   that   there   are   a   bunch   of   rules   and   heuristics. These   same   heuristics   can   give   you   a lift   when   tweaked   with   machine   learning .   Your   heuristics   should   be   mined   for   whatever information   they   have,   for   two   reasons.   First,   the   transition   to   a   machine   learned   system   will   be smoother.   Second,   usually   those   rules   contain   a   lot   of   the   intuition   about   the   system   you   don't want   to   throw   away.   There   are   four   ways   you   can   use   an   existing   heuristic:
@@ -266,6 +290,10 @@ In   general,   practice   good   alerting   hygiene,   such   as�
 
 How   much   does   performance   degrade   if   you   have   a   model   that   is   a   day   old?   A   week   old?   A quarter   old?   This   information   can   help   you   to   understand   the   priorities   of   your   monitoring.   If   you lose   10%   of   your   revenue   if   the   model   is   not   updated   for   a   day,   it   makes   sense   to   have   an engineer   watching   it   continuously.   Most   ad   serving   systems   have   new   advertisements   to   handle every   day,   and   must   update   daily.   For   instance,   if   the   ML   model   for    Google   Play   Search   is   not updated  ,   it   can   have   an   impact   on   revenue    in   under   a   month.   Some   models   for   What's   Hot   in Google   Plus   have   no   post   identifier   in   their   model   so   they   can   export   these   models   infrequently. Other   models   that   have   post   identifiers   are   updated   much   more   frequently.   Also   notice   that freshness   can   change   over   time,   especially   when   feature   columns   are   added   or   removed   from your   model.
 
+
+<!-- PAGE_BREAK -->
+
+
 ## Rule   #9:   Detect   problems   before   exporting   models.
 
 Many   machine   learning   systems   have   a   stage   where   you   export   the   model   to   serving.   If   there   is an   issue   with   an   exported   model,   it   is   a   user­facing   issue.   If   there   is   an   issue   before,   then   it   is   a training   issue,   and   users   will   not   notice.
@@ -283,6 +311,10 @@ If   the   system   is   large,   and   there   are   many   f
 ## Your   First   Objective
 
 You   have   many   metrics,   or   measurements   about   the   system   that   you   care   about,   but   your machine   learning   algorithm   will   often   require   a   single objective,   a   number   that   your   algorithm is   'trying'   to   optimize. I   distinguish   here   between   objectives   and   metrics: a   metric   is   any number   that   your   system   reports ,   which   may   or   may   not   be   important.   See   also   Rule   #2  .
+
+
+<!-- PAGE_BREAK -->
+
 
 ## Rule   #12:   Don't   overthink   which   objective   you   choose   to   directly   optimize.
 
@@ -318,6 +350,10 @@ Finally,   don't   try   to   get   the   machine   learning   t
 
 2    There   is   often   no   'true'   objective.   See   Rule   #39  .
 
+
+<!-- PAGE_BREAK -->
+
+
 4. How   will   this   affect   the   company's   overall   health?
 
 These   are   all   important,   but   also   incredibly   hard.   Instead,   use   proxies:   if   the   user   is   happy,   they will   stay   on   the   site   longer.   If   the   user   is   satisfied,   they   will   visit   again   tomorrow.   Insofar   as well­being   and   company   health   is   concerned,   human   judgement   is   required   to   connect   any machine   learned   objective   to   the   nature   of   the   product   you   are   selling   and   your   business   plan, so   we   don't   end   up   here  .
@@ -337,6 +373,10 @@ Quality   ranking   is   a   fine   art,   but   spam   filterin
 At   some   level,   the   output   of   these   two   systems   will   have   to   be   integrated.   Keep   in   mind,   filtering spam   in   search   results   should   probably   be   more   aggressive   than   filtering   spam   in   email messages.   Also,   it   is   a   standard   practice   to   remove   spam   from   the   training   data   for   the   quality classifier.
 
 3    This   is   true   assuming   that   you   have   no   regularization   and   that   your   algorithm   has   converged.   It   is approximately   true   in   general.
+
+
+<!-- PAGE_BREAK -->
+
 
 ## ML   Phase   II:   Feature   Engineering
 
@@ -358,6 +398,10 @@ Regardless,   giving   a   model   a   bit   of   love   can  
 
 This   might   be   a   controversial   point,   but   it   avoids   a   lot   of   pitfalls.   First   of   all,   let's   describe   what   a learned   feature   is.   A   learned   feature   is   a   feature   generated   either   by   an   external   system   (such as   an   unsupervised   clustering   system)   or   by   the   learner   itself   (e.g.   via   a   factored   model   or   deep learning).   Both   of   these   can   be   useful,   but   they   can   have   a   lot   of   issues,   so   they   should   not   be   in the   first   model.
 
+
+<!-- PAGE_BREAK -->
+
+
 If   you   use   an   external   system   to   create   a   feature,   remember   that   the   system   has   its   own objective.   The   external   system's   objective    may   be   only   weakly   correlated   with   your   current objective.   If   you   grab   a   snapshot   of   the   external   system,   then   it   can   become   out   of   date.   If   you update   the   features   from   the   external   system,   then   the   meanings   may   change.   If   you   use   an external   system   to   provide   a   feature,   be   aware   that    they   require   a   great   deal   of   care.
 
 The   primary   issue   with   factored   models   and   deep   models   is   that   they   are   non­convex.   Thus, there   is   no   guarantee   that   an   optimal   solution   can   be   approximated   or   found,   and   the   local minima   found   on   each   iteration   can   be   different.   This   variation   makes   it   hard   to   judge   whether the   impact   of   a   change   to   your   system   is   meaningful   or   random.   By   creating   a   model   without deep   features,   you   can   get   an   excellent   baseline   performance.   After   this   baseline   is   achieved, you   can   try   more   esoteric   approaches.
@@ -374,6 +418,10 @@ With   tons   of   data,   it   is   simpler   to   learn   mi
 
 There   are   a   variety   of   ways   to   combine   and   modify   features.   Machine   learning   systems   such   as TensorFlow   allow   you   to   pre­process   your   data   through   transformations  .   The   two   most   standard approaches   are   'discretizations'   and   'crosses'   .
 
+
+<!-- PAGE_BREAK -->
+
+
 Discretization   consists   of   taking   a   continuous   feature   and   creating   many   discrete   features   from it.   Consider   a   continuous   feature   such   as   age.   You   can   create   a   feature   which   is   1   when   age   is less   than   18,   another   feature   which   is   1   when   age   is   between   18   and   35,   et   cetera.   Don't overthink   the   boundaries   of   these   histograms:   basic   quantiles   will   give   you   most   of   the   impact.
 
 Crosses   combine   two   or   more   feature   columns.   A   feature   column,   in   TensorFlow's   terminology, is   a   set   of   homogenous   features,   (e.g.   {male,   female},   {US,   Canada,   Mexico},   et   cetera).   A   cross is   a   new   feature   column   with   features   in,   for   example, . male , emale } US , anada , exico } { f × { C M This   new   feature   column   will   contain   the   feature   (male,   Canada).   If   you   are   using   T ensorFlow and   you   tell   T ensorFlow   to   create   this   cross   for   you,   this   (male,   Canada)   feature   will   be   present in   examples   representing   male   Canadians.   Note   that   it   takes   massive   amounts   of   data   to   learn models   with   crosses   of   three,   four,   or   more   base   feature   columns.
@@ -389,6 +437,10 @@ There   are   fascinating   statistical   learning   theory   result
 3. If   you   have   billions   or   hundreds   of   billions   of   examples,   you   can   cross   the   feature columns   with   document   and   query   tokens,   using   feature   selection   and   regularization. You   will   have   a   billion   examples,   and   10   million   features.
 
 Statistical   learning   theory   rarely   gives   tight   bounds,   but   gives   great   guidance   for   a   starting   point. In   the   end,   use Rule   #28 to   decide   what   features   to   use.
+
+
+<!-- PAGE_BREAK -->
+
 
 ## Rule   #22:   Clean   up   features   you   are   no   longer   using.
 
@@ -410,6 +462,10 @@ There   are   two   reasons   for   this.   The   first   is  
 
 If   you   really   want   to   have   user   feedback, use   user   experience   methodologies .   Create   user personas   (one   description   is   in   Bill   Buxton's Designing   User   Experiences )   early   in   a   process   and do   usability   testing   (one   description   is   in   Steve   Krug's Don't   Make   Me   Think )   later.   User personas   involve   creating   a   hypothetical   user.   For   instance,   if   your   team   is   all   male,   it   might   help to   design   a   35­year   old   female   user   persona   (complete   with   user   features),   and   look   at   the results   it   generates   rather   than   10   results   for   25­40   year   old   males.   Bringing   in   actual   people   to watch   their   reaction   to   your   site   (locally   or   remotely)   in   usability   testing   can   also   get   you   a   fresh perspective.
 
+
+<!-- PAGE_BREAK -->
+
+
 ## Rule   #24:   Measure   the   delta   between   models.
 
 One   of   the   easiest,   and   sometimes   most   useful   measurements   you   can   make   before   any   users have   looked   at   your   new   model   is   to   calculate   just   how   different   the   new   results   are   from production.   For   instance,   if   you   have   a   ranking   problem,   run   both   models   on   a   sample   of   queries through   the   entire   system,   and   look   at   the   size   of   the   symmetric   difference   of   the   results (weighted   by   ranking   position).   If   the   difference   is   very   small,   then   you   can   tell   without   running an   experiment   that   there   will   be   little   change.   If   the   difference   is   very   large,   then   you   want   to make   sure   that   the   change   is   good.   Looking   over   queries   where   the   symmetric   difference   is   high can   help   you   to   understand   qualitatively   what   the   change   was   like.   Make   sure,   however,   that   the system   is   stable.   Make   sure   that   a   model   when   compared   with   itself   has   a   low   (ideally   zero) symmetric   difference.
@@ -425,6 +481,10 @@ Suppose   that   you   see   a   training   example   that   the
 On   the   other   hand,   if   you   try   to   create   a   feature   based   upon   examples   the   system   doesn't   see as   mistakes,   the   feature   will   be   ignored.   For   instance,   suppose   that   in   Play   Apps   Search, someone   searches   for   'free   games'.   Suppose   one   of   the   top   results   is   a   less   relevant   gag   app. So   you   create   a   feature   for   'gag   apps'.   However,   if   you   are   maximizing   number   of   installs,   and people   install   a   gag   app   when   they   search   for   free   games,   the   'gag   apps'   feature   won't   have   the effect   you   want.
 
 Once   you   have   examples   that   the   model   got   wrong,   look   for   trends   that   are   outside   your   current feature   set.   For   instance,   if   the   system   seems   to   be   demoting   longer   posts,   then   add   post length.   Don't   be   too   specific   about   the   features   you   add.   If   you   are   going   to   add   post   length, don't   try   to   guess   what   long   means,   just   add   a   dozen   features   and   the   let   model   figure   out   what to   do   with   them   (see   Rule   #21  ).   That   is   the   easiest   way   to   get   what   you   want.
+
+
+<!-- PAGE_BREAK -->
+
 
 ## Rule   #27:   Try   to   quantify   observed   undesirable   behavior.
 
@@ -450,6 +510,10 @@ Rule   #29:   The   best   way   to   make   sure   that   you
 
 Even   if   you   can't   do   this   for   every   example,   do   it   for   a   small   fraction,   such   that   you   can   verify   the consistency   between   serving   and   training   (see Rule   #37 ).   T eams   that   have   made   this measurement   at   Google   were   sometimes   surprised   by   the   results.   YouTube   home   page switched   to   logging   features   at   serving   time   with   significant   quality   improvements   and   a reduction   in   code   complexity,   and   many   teams   are   switching   their   infrastructure   as   we   speak.
 
+
+<!-- PAGE_BREAK -->
+
+
 ## Rule   #30:   Importance   weight   sampled   data,   don't   arbitrarily   drop   it!
 
 When   you   have   too   much   data,   there   is   a   temptation   to   take   files   1­12,   and   ignore   files   13­99. This   is   a   mistake:   dropping   data   in   training   has   caused   issues   in   the   past   for   several   teams   (see Rule   #6  ).   Although   data   that   was   never   shown   to   the   user   can   be   dropped,   importance weighting   is   best   for   the   rest.   Importance   weighting   means   that   if   you   decide   that   you   are   going to   sample   example   X   with   a   30%   probability,   then   give   it   a   weight   of   10/3. With   importance weighting,   all   of   the   calibration   properties   discussed   in   Rule   #14   still   hold .
@@ -465,6 +529,10 @@ Batch   processing   is   different   than   online   processing. �
 ## Rule   #33:   If   you   produce   a   model   based   on   the   data   until   January   5th,   test   the   model   on the   data   from   January   6th   and   after.
 
 In   general,   measure   performance   of   a   model   on   the   data   gathered   after   the   data   you   trained   the model   on,   as   this   better   reflects   what   your   system   will   do   in   production.   If   you   produce   a   model based   on   the   data   until   January   5th,   test   the   model   on   the   data   from   January   6th.   You   will expect   that   the   performance   will   not   be   as   good   on   the   new   data,   but   it   shouldn't   be   radically worse.   Since   there   might   be   daily   effects,   you   might   not   predict   the   average   click   rate   or conversion   rate,   but   the   area   under   the   curve,   which   represents   the   likelihood   of   giving   the positive   example   a   score   higher   than   a   negative   example,   should   be   reasonably   close.
+
+
+<!-- PAGE_BREAK -->
+
 
 ## Rule   #34:   In   binary   classification   for   filtering   (such   as   spam   detection   or   determining
 
@@ -486,6 +554,10 @@ When   you   switch   your   ranking   algorithm   radically   eno
 
 4    The   reason   you   don't   want   to   show   a   specific   popular   app   everywhere   has   to   do   with   the   importance   of making   all   the   desired   apps reachable .   For   instance,   if   someone   searches   for   'bird   watching   app',   they might   download   'angry   birds',   but   that   certainly   wasn't   their   intent.   Showing   such   an   app   might   improve download   rate,   but   leave   the   user's   needs   ultimately   unsatisfied.
 
+
+<!-- PAGE_BREAK -->
+
+
 ## Rule   #36:   Avoid   feedback   loops   with   positional   features.
 
 The   position   of   content   dramatically   affects   how   likely   the   user   is   to   interact   with   it.   If   you   put   an app   in   the   first   position   it   will   be   clicked   more   often,   and   you   will   be   convinced   it   is   more   likely   to be   clicked.   One   way   to   deal   with   this   is   to   add   positional   features,   i.e.   features   about   the   position of   the   content   in   the   page.   You   train   your   model   with   positional   features,   and   it   learns   to   weight, for   example,   the   feature   "1st­position"   heavily.   Your   model   thus   gives   less   weight   to   other   factors for   examples   with   "1st­position=true".   Then   at   serving   you   don't   give   any   instances   the positional   feature,   or   you   give   them   all   the   same   default   feature,   because   you   are   scoring candidates before you   have   decided   the   order   in   which   to   display   them.
@@ -503,6 +575,10 @@ There   are   several   things   that   can   cause   skew   in�
 ## ML   Phase   III:   Slowed   Growth,   Optimization Refinement,   and   Complex   Models
 
 There   will   be   certain   indications   that   the   second   phase   is   reaching   a   close.   First   of   all,   your monthly   gains   will   start   to   diminish.   You   will   start   to   have   tradeoffs   between   metrics:   you   will   see some   rise   and   others   fall   in   some   experiments.   This   is   where   it   gets   interesting.   Since   the   gains are   harder   to   achieve,   the   machine   learning   has   to   get   more   sophisticated.
+
+
+<!-- PAGE_BREAK -->
+
 
 A   caveat:   this   section   has   more   blue­sky   rules   than   earlier   sections.   We   have   seen   many   teams go   through   the   happy   times   of   Phase   I   and   Phase   II   machine   learning.   Once   Phase   III   has   been reached,   teams   have   to   find   their   own   path.
 
@@ -525,6 +601,10 @@ The   only   easy   launch   decisions   are   when   all   metr
 
 If   the   current   system   is   A,   then   the   team   would   be   unlikely   to   switch   to   B.   If   the   current   system   is B,   then   the   team   would   be   unlikely   to   switch   to   A.   This   seems   in   conflict   with   rational   behavior: however,   predictions   of   changing   metrics   may   or   may   not   pan   out,   and   thus   there   is   a   large   risk involved   with   either   change.   Each   metric   covers   some   risk   with   which   the   team   is   concerned.
 
+
+<!-- PAGE_BREAK -->
+
+
 Moreover,   no   metric   covers   the   team's   ultimate   concern,   'where   is   my   product   going   to   be   five years   from   now'?
 
 ## Individuals,   on   the   other   hand,   tend   to   favor   one   objective   that   they   can   directly   optimize.
@@ -542,6 +622,10 @@ Use   a   simple   model   for   ensembling   that   takes   onl
 You've   added   some   demographic   information   about   the   user.   You've   added   some   information about   the   words   in   the   document.   You   have   gone   through   template   exploration,   and   tuned   the regularization.   You   haven't   seen   a   launch   with   more   than   a   1%   improvement   in   your   key   metrics in   a   few   quarters.   Now   what?
 
 It   is   time   to   start   building   the   infrastructure   for   radically   different   features,   such   as   the   history   of documents   that   this   user   has   accessed   in   the   last   day,   week,   or   year,   or   data   from   a   different property.   Use   wikidata   entities   or   something   internal   to   your   company   (such   as   Google's knowledge   graph  ).   Use   deep   learning.   Start   to   adjust   your   expectations   on   how   much   return   you expect   on   investment,   and   expand   your   efforts   accordingly.   As   in   any   engineering   project,   you have   to   weigh   the   benefit   of   adding   new   features   against   the   cost   of   increased   complexity.
+
+
+<!-- PAGE_BREAK -->
+
 
 ## Rule   #42:   Don't   expect   diversity,   personalization,   or   relevance   to   be   as   correlated   with popularity   as   you   think   they   are.
 
@@ -567,6 +651,10 @@ There   are   many   documents   on   machine   learning   at   
 - Deep   Learning   by   Ian   Goodfellow   et   al   for   learning   nonlinear   models
 - Google   paper   on   technical   debt  ,   which   has   a   lot   of   general   advice.
 - [Tensorflow   Documentation](https://www.tensorflow.org/)
+
+
+<!-- PAGE_BREAK -->
+
 
 ## Acknowledgements
 

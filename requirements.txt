@@ -9,7 +9,6 @@ langchain-huggingface
 gradio
 pypdf
 langchain-qdrant
-arxiv
 pymupdf
 markdown-it-py
 qdrant-client 
@@ -30,3 +29,4 @@ rank-bm25
 fastembed
 deepeval
 sentence-transformers
+requests
