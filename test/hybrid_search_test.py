@@ -17,6 +17,7 @@ for result in results:
     print("=" * 80)
     print("Rank:", result["rank"])
     print("RRF score:", result["score"])
+    print("rerank score:", result["rerank_score"])
     print("Paper:", result["paper_title"])
     print("Section:", result["section"])
     print("Chunk ID:", result["chunk_id"])

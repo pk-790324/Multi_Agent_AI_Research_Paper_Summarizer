@@ -5,6 +5,9 @@ from state.state import ResearchPaperState
 from services.chunking_service import ChunkingService
 
 
+CHUNK_SIZE=1800
+OVERLAP=200
+
 def chunking_node(
     state: ResearchPaperState
 ) -> ResearchPaperState:
@@ -37,7 +40,9 @@ def chunking_node(
         chunks, chunk_file = (
             ChunkingService.section_aware_chunking(
                 markdown_path=markdown_path,
-                paper_title=paper_title
+                paper_title=paper_title,
+                chunk_size=CHUNK_SIZE,
+                overlap=OVERLAP
             )
         )
 
@@ -57,6 +62,8 @@ def chunking_node(
                 "chunks": chunks,
 
                 "chunk_file": chunk_file,
+                "chunk_size":CHUNK_SIZE,
+                "chunk_overlap":OVERLAP
             },
 
             "error": "",

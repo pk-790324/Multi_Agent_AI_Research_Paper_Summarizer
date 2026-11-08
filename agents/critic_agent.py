@@ -9,11 +9,12 @@ from llm.llm import llm
 # CRITIC PROMPT
 # ============================================================
 
+
 critic_prompt = ChatPromptTemplate.from_template("""
 You are a critical reviewer in a research paper analysis system.
 
-Your responsibility is to evaluate the quality, correctness,
-and evidence support of the Analyst's response.
+Your responsibility is to evaluate the Analyst's response
+against the retrieved research evidence.
 
 USER QUESTION:
 {user_query}
@@ -24,42 +25,69 @@ RETRIEVED EVIDENCE:
 ANALYST'S ANALYSIS:
 {analysis}
 
+PREVIOUS ANALYST FEEDBACK:
+{previous_feedback}
+
 EVALUATION INSTRUCTIONS:
 
 1. Check whether the analysis answers the user's question.
-2. Verify whether important claims are supported by the retrieved evidence.
-3. Identify unsupported or potentially misleading claims.
-4. Identify important missing information.
-5. Check whether the analysis accurately represents the research findings.
-6. Check whether the methodology and technical explanations are correct
-   according to the supplied evidence.
-7. Do not introduce information from your own knowledge.
-8. Do not request additional retrieval unless the missing information
-   is genuinely necessary to answer the user's question.
+2. Verify whether important claims are supported by evidence.
+3. Identify unsupported or misleading claims.
+4. Identify missing important information.
+5. Check technical and methodological correctness.
+6. Do not introduce information from your own knowledge.
+7. Do not request additional retrieval if existing evidence
+   is sufficient to correct the analysis.
+8. Be specific. Explain exactly what the analyst must fix.
 
-DECISION:
+DECISION RULES:
 
-If the evidence is sufficient and the analysis is acceptable, return:
+A. APPROVED:
+Use when the analysis correctly answers the question
+and all important claims are supported by evidence.
+
+B. REJECTED:
+Use when the retrieved evidence is sufficient, but the
+analyst's response contains errors, unsupported claims,
+incorrect interpretations, or missing explanations that
+can be corrected using the existing evidence.
+
+C. NEED_MORE_RETRIEVAL:
+Use when the retrieved evidence genuinely does not contain
+enough information to answer the question correctly.
+
+STRICT OUTPUT FORMAT:
 
 VERDICT: APPROVED
-REASON: <explain why the analysis is acceptable>
+REASON: Explain why the analysis is acceptable.
 
-If important evidence is missing, return:
+OR
+
+VERDICT: REJECTED
+REASON: Explain what is wrong.
+REQUIRED_CORRECTIONS:
+- Specific correction 1
+- Specific correction 2
+
+OR
 
 VERDICT: NEED_MORE_RETRIEVAL
-REASON: <explain exactly what evidence is missing>
+REASON: Explain what evidence is missing.
+REQUIRED_EVIDENCE:
+- Specific missing evidence 1
+- Specific missing evidence 2
 
-IMPORTANT:
-- Be specific in your evaluation.
-- Do not approve unsupported claims.
-- Do not request retrieval simply because additional information
-  would be interesting.
+Return exactly one verdict.
+Do not mix verdicts.
 """)
+
+
 
 
 # ============================================================
 # CRITIC AGENT
 # ============================================================
+
 
 def critic_agent(state: ResearchState):
 
@@ -67,51 +95,38 @@ def critic_agent(state: ResearchState):
     print("CRITIC AGENT")
     print("=" * 60)
 
-    # --------------------------------------------------------
-    # 1. READ STATE
-    # --------------------------------------------------------
-
     user_query = state.get("user_query", "").strip()
+    retrieved_chunks = state.get("retrieved_chunks", [])
+    analysis = state.get("analysis", "")
 
-    retrieved_chunks = state.get(
-        "retrieved_chunks",
-        []
-    )
-
-    analysis = state.get(
-        "analysis",
-        ""
-    )
+    previous_feedback = state.get("analyst_feedback", "")
+    critic_attempts = state.get("critic_attempts", 0) + 1
 
     print("Research question:", user_query)
     print("Retrieved chunks:", len(retrieved_chunks))
     print("Analysis available:", bool(analysis))
+    print("Previous feedback:", bool(previous_feedback))
 
-    # --------------------------------------------------------
-    # 2. VALIDATE INPUT
-    # --------------------------------------------------------
-
+    # Missing analysis means the analyst must run.
     if not analysis:
-
         return {
             "critical_analysis": (
-                "VERDICT: NEED_MORE_RETRIEVAL\n"
-                "REASON: Analyst's analysis is missing."
-            )
+                "VERDICT: REJECTED\n"
+                "REASON: Analyst's analysis is missing.\n"
+                "REQUIRED_CORRECTIONS:\n"
+                "- Generate an evidence-supported analysis."
+            ),
+            "critic_attempts": critic_attempts,
         }
 
     if not retrieved_chunks:
-
         return {
             "critical_analysis": (
                 "VERDICT: NEED_MORE_RETRIEVAL\n"
                 "REASON: No retrieved research evidence is available."
-            )
+            ),
+            "critic_attempts": critic_attempts,
         }
-
-    # --------------------------------------------------------
-    # 3. BUILD CONTEXT
-    # --------------------------------------------------------
 
     MAX_CONTEXT_DOCS = 5
     MAX_CONTEXT_CHARS = 3000
@@ -125,7 +140,6 @@ def critic_agent(state: ResearchState):
         start=1
     ):
 
-        # Retrieved chunks are dictionaries
         content = doc.get(
             "page_content",
             doc.get("text", "")
@@ -136,23 +150,11 @@ def critic_agent(state: ResearchState):
 
         content = content.strip()
 
-        paper_title = doc.get(
-            "paper_title",
-            "Unknown"
-        )
-
-        section = doc.get(
-            "section",
-            "Unknown"
-        )
-
+        paper_title = doc.get("paper_title", "Unknown")
+        section = doc.get("section", "Unknown")
         page_start = doc.get("page_start")
         page_end = doc.get("page_end")
-
-        chunk_id = doc.get(
-            "chunk_id",
-            "Unknown"
-        )
+        chunk_id = doc.get("chunk_id", "Unknown")
 
         if page_start is not None and page_end is not None:
             page_info = (
@@ -177,9 +179,7 @@ def critic_agent(state: ResearchState):
         if len(header) >= remaining:
             break
 
-        body_budget = remaining - len(header)
-
-        content = content[:body_budget]
+        content = content[:remaining - len(header)]
 
         entry = header + content
 
@@ -192,19 +192,13 @@ def critic_agent(state: ResearchState):
     context = "\n\n".join(context_parts)
 
     if not context:
-
         return {
             "critical_analysis": (
                 "VERDICT: NEED_MORE_RETRIEVAL\n"
                 "REASON: Retrieved chunks contain no usable text."
-            )
+            ),
+            "critic_attempts": critic_attempts,
         }
-
-    analysis = analysis[:MAX_ANALYSIS_CHARS]
-
-    # --------------------------------------------------------
-    # 4. EVALUATE ANALYSIS
-    # --------------------------------------------------------
 
     try:
 
@@ -213,7 +207,8 @@ def critic_agent(state: ResearchState):
         response = chain.invoke({
             "user_query": user_query,
             "context": context,
-            "analysis": analysis,
+            "analysis": analysis[:MAX_ANALYSIS_CHARS],
+            "previous_feedback": previous_feedback or "None",
         })
 
         critique = response.content.strip()
@@ -221,12 +216,9 @@ def critic_agent(state: ResearchState):
         print("\nCRITIC EVALUATION:")
         print(critique)
 
-        # ----------------------------------------------------
-        # 5. RETURN RESULT
-        # ----------------------------------------------------
-
         return {
-            "critical_analysis": critique
+            "critical_analysis": critique,
+            "critic_attempts": critic_attempts,
         }
 
     except Exception as e:
@@ -235,5 +227,6 @@ def critic_agent(state: ResearchState):
 
         return {
             "critical_analysis": "",
-            "error": f"Critic failed: {str(e)}"
+            "error": f"Critic failed: {str(e)}",
+            "critic_attempts": critic_attempts,
         }

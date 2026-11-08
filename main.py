@@ -1,12 +1,16 @@
 from pathlib import Path
 import json
 from graphs.research_graphs import research_graph
+from agents.orchestrator_agent import MAX_AGENT_ATTEMPTS
 import gradio as gr
 
 # Reuse your existing, working LangGraph ingestion pipeline.
 from graphs.ingestion_graphs import ingestion_graph
 
-
+import subprocess
+import sys
+import json
+from pathlib import Path
 # =========================================================
 # CONFIGURATION
 # =========================================================
@@ -93,6 +97,8 @@ def build_report(state, statuses):
         "file_path": artifacts.get("file_path"),
         "markdown_path": artifacts.get("markdown_path"),
         "chunk_file": artifacts.get("chunk_file"),
+        "chunk_size":artifacts.get("chunk_size"),
+        "chunk_overlap":artifacts.get("chunk_overlap"),
         "total_chunks": len(chunks) if isinstance(chunks, list) else None,
         "collection_name": artifacts.get("collection_name"),
         "embedding_count": artifacts.get("embedding", {}).get("indexed_chunks", 0),
@@ -289,6 +295,47 @@ def list_uploaded_papers():
     return "\n".join(lines)
 
 # =========================================================
+# Converting Retriever JSON to Markdown
+# =========================================================
+
+def format_retrieved_chunks(chunks):
+
+    if not chunks:
+        return "### 📚 No research chunks retrieved."
+
+    markdown = "## 📚 Retrieved Research Chunks\n\n"
+
+    markdown += f"**Total Chunks Retrieved:** {len(chunks)}\n\n"
+
+    markdown += "---\n\n"
+
+    for chunk in chunks:
+
+        rank = chunk.get("rank", "N/A")
+        score = chunk.get("score", 0)
+        paper_title = chunk.get("paper_title", "Unknown Paper")
+        section = chunk.get("section", "Unknown Section")
+        page_start = chunk.get("page_start", "N/A")
+        page_end = chunk.get("page_end", "N/A")
+        content = chunk.get("page_content", "")
+        source_file = chunk.get("source_file", "Unknown Source")
+        chunk_id = chunk.get("chunk_id", "N/A")
+
+        markdown += f"### 🔹 Rank {rank}\n\n"
+        markdown += f"**Paper:** {paper_title}\n\n"
+        markdown += f"**Section:** {section}\n\n"
+        markdown += f"**Relevance Score:** `{score:.4f}`\n\n"
+        markdown += f"**Pages:** {page_start} - {page_end}\n\n"
+        markdown += f"**Chunk ID:** `{chunk_id}`\n\n"
+        markdown += f"**Source File:** `{source_file}`\n\n"
+        markdown += "**Content:**\n\n"
+        markdown += f"> {content}\n\n"
+        markdown += "---\n\n"
+
+    return markdown
+
+
+# =========================================================
 # MULTI AGENT RESEARCH PAPER PIPELINE
 # =========================================================
 
@@ -320,6 +367,10 @@ def run_research_pipeline(user_query: str):
         "user_query": user_query.strip(),
         "retrieved_chunks": [],
         "retrieval_count": 0,
+        "retrieval_attempts": 0,
+        "analyst_attempts": 0,
+        "critic_attempts": 0,
+        "max_critic_attempts": MAX_AGENT_ATTEMPTS,
         "analysis": "",
         "critical_analysis": "",
         "cited_analysis": "",
@@ -370,6 +421,7 @@ def run_research_pipeline(user_query: str):
         yield (
             "Please enter a research question.",
             "",
+            [],
             "",
             "",
             "",
@@ -384,6 +436,7 @@ def run_research_pipeline(user_query: str):
 
         yield (
             "⏳ Initializing pipeline...",
+            "",
             "",
             "",
             "",
@@ -446,6 +499,7 @@ def run_research_pipeline(user_query: str):
                 yield (
                     "⚡ Pipeline is running...",
                     final_state.get("final_answer", ""),
+                    format_retrieved_chunks(final_state.get("retrieved_chunks",[])),
                     final_state.get("analysis", ""),
                     final_state.get("critical_analysis", ""),
                     final_state.get("cited_analysis", ""),
@@ -483,6 +537,7 @@ def run_research_pipeline(user_query: str):
         yield (
             status_message,
             final_state.get("final_answer", ""),
+            format_retrieved_chunks(final_state.get("retrieved_chunks",[])),
             final_state.get("analysis", ""),
             final_state.get("critical_analysis", ""),
             final_state.get("cited_analysis", ""),
@@ -510,6 +565,7 @@ def run_research_pipeline(user_query: str):
         yield (
             f"❌ Pipeline failed: {str(error)}",
             "",
+            format_retrieved_chunks(final_state.get("retrieved_chunks",[])),
             final_state.get("analysis", ""),
             final_state.get("critical_analysis", ""),
             final_state.get("cited_analysis", ""),
@@ -518,6 +574,350 @@ def run_research_pipeline(user_query: str):
             progress,
             get_log()
         )
+        
+        
+# =========================================================
+# RETRIEVER EVALUATION CODE
+# =========================================================
+
+import gradio as gr
+import pandas as pd
+
+from evals.eval_retriever import (
+    run_local,
+    format_evaluation_report
+)
+
+
+def run_retriever_evaluation():
+
+    project_root = Path(__file__).resolve().parent
+
+    golden_path = (
+        project_root /
+        "goldens" /
+        "retriever_deepeval_goldens.json"
+    )
+
+    # Initial state
+    yield (
+        "🔄 **Generating golden dataset...**",
+        "⏳ Waiting for generation...",
+        "⏳ Waiting for retrieval...",
+        "⏳ Waiting for evaluation...",
+        ""
+    )
+
+    try:
+
+        # =====================================
+        # STEP 1: GOLDEN GENERATION
+        # =====================================
+
+        generation = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "goldens.generator_goldens"
+            ],
+            cwd=project_root,
+            capture_output=True,
+            text=True,
+            check=True
+        )
+
+        yield (
+            "✅ **Golden dataset generated successfully!**",
+            "🔄 **Validating generated dataset...**",
+            "⏳ Waiting for retrieval...",
+            "⏳ Waiting for evaluation...",
+            ""
+        )
+
+        # =====================================
+        # STEP 2: VALIDATE DATASET
+        # =====================================
+
+        if not golden_path.exists():
+            raise FileNotFoundError(
+                "Golden dataset file was not generated."
+            )
+
+        with open(golden_path, "r", encoding="utf-8") as f:
+            goldens = json.load(f)
+
+        if not goldens:
+            raise ValueError("Golden dataset is empty.")
+
+        yield (
+            "✅ **Golden dataset generated successfully!**",
+            f"✅ **Dataset validated: {len(goldens)} golden test cases.**",
+            "🔄 **Initializing hybrid retriever...**",
+            "⏳ Waiting for evaluation...",
+            ""
+        )
+
+        # =====================================
+        # STEP 3: RETRIEVER EVALUATION
+        # =====================================
+
+        yield (
+            "✅ **Golden generation completed.**",
+            f"✅ **{len(goldens)} golden test cases validated.**",
+            "🔄 **Running Hybrid Retrieval and collecting contexts...**",
+            "⏳ Waiting for evaluation...",
+            ""
+        )
+
+        result = run_local()
+
+        yield (
+            "✅ **Golden generation completed.**",
+            f"✅ **{len(goldens)} golden test cases validated.**",
+            "✅ **Hybrid retrieval completed.**",
+            "🔄 **Calculating DeepEval metrics...**",
+            ""
+        )
+
+        # =====================================
+        # STEP 4: FORMAT RESULTS
+        # =====================================
+
+        report = format_evaluation_report(result)
+
+        yield (
+            "✅ **Golden generation completed.**",
+            f"✅ **{len(goldens)} golden test cases validated.**",
+            "✅ **Hybrid retrieval completed.**",
+            "✅ **DeepEval evaluation completed!**",
+            report
+        )
+
+    except subprocess.CalledProcessError as e:
+
+        yield (
+            "❌ **Golden generation failed.**",
+            "⏹ Dataset validation skipped.",
+            "⏹ Retriever evaluation skipped.",
+            "⏹ DeepEval evaluation skipped.",
+            f"### Generator Error\n```text\n{e.stderr}\n```"
+        )
+
+    except Exception as e:
+
+        yield (
+            "❌ **Pipeline failed.**",
+            "⏹ Check previous stage.",
+            "⏹ Evaluation stopped.",
+            "❌ **Error occurred.**",
+            f"### Error\n```text\n{str(e)}\n```"
+        )
+
+        # =====================================
+        # STEP 2: VERIFY GENERATED DATASET
+        # =====================================
+
+        if not golden_path.exists():
+            return "❌ Golden dataset was not generated."
+
+        with open(golden_path, "r", encoding="utf-8") as f:
+            goldens = json.load(f)
+
+        if not goldens:
+            return "❌ Generated golden dataset is empty."
+
+        generation_message = (
+            f"✅ Golden dataset generated successfully!\n\n"
+            f"- Total goldens: **{len(goldens)}**\n\n"
+        )
+
+        # =====================================
+        # STEP 3: RUN RETRIEVER EVALUATION
+        # =====================================
+
+        result = run_local()
+
+        report = format_evaluation_report(result)
+
+        # =====================================
+        # STEP 4: RETURN COMPLETE REPORT
+        # =====================================
+
+        return (
+            generation_message
+            + "---\n\n"
+            + report
+        )
+
+    except subprocess.CalledProcessError as e:
+
+        return (
+            "## ❌ Golden Dataset Generation Failed\n\n"
+            f"```text\n{e.stderr}\n```"
+        )
+
+    except Exception as e:
+
+        return (
+            "## ❌ Evaluation Error\n\n"
+            f"```text\n{str(e)}\n```"
+        )
+        
+
+
+
+
+
+# =========================================================
+# GENERATOR EVALUATION CODE
+# =========================================================
+
+import json
+from pathlib import Path
+
+from goldens.generator_faithfulness import (
+    generate_faithfulness_goldens
+)
+
+from evals.eval_generator import (
+    run as run_generator_evaluation,
+    format_generator_report
+)
+
+
+
+def run_generator_evaluation_pipeline():
+
+    project_root = Path(__file__).resolve().parent
+
+    golden_path = (
+        project_root /
+        "goldens" /
+        "faithfulness_goldens.json"
+    )
+
+    # =====================================
+    # INITIAL STATUS
+    # =====================================
+
+    yield (
+        "🔄 **Generating Faithfulness Golden Dataset...**",
+        "⏳ Waiting for dataset validation...",
+        "⏳ Waiting for multi-agent generation...",
+        "⏳ Waiting for DeepEval...",
+        ""
+    )
+
+    try:
+
+        # =====================================
+        # STEP 1: GENERATE GOLDENS
+        # =====================================
+
+        generate_faithfulness_goldens()
+
+        yield (
+            "✅ **Golden dataset generation completed!**",
+            "🔄 **Validating generated dataset...**",
+            "⏳ Waiting for multi-agent generation...",
+            "⏳ Waiting for DeepEval...",
+            ""
+        )
+
+        # =====================================
+        # STEP 2: VALIDATE GOLDENS
+        # =====================================
+
+        if not golden_path.exists():
+            raise FileNotFoundError(
+                "Faithfulness golden dataset was not generated."
+            )
+
+        with open(
+            golden_path,
+            "r",
+            encoding="utf-8"
+        ) as f:
+
+            goldens = json.load(f)
+
+        if not goldens:
+            raise ValueError(
+                "Generated faithfulness golden dataset is empty."
+            )
+
+        yield (
+            "✅ **Golden dataset generated successfully!**",
+            f"✅ **Dataset validated: {len(goldens)} test cases.**",
+            "🔄 **Preparing multi-agent generator evaluation...**",
+            "⏳ Waiting for DeepEval...",
+            ""
+        )
+
+        # =====================================
+        # STEP 3: MULTI-AGENT GENERATION
+        # =====================================
+
+        yield (
+            "✅ **Golden generation completed.**",
+            f"✅ **{len(goldens)} golden test cases validated.**",
+            "🔄 **Executing Analyst → Critical Analyst → Citation Agent → Synthesizer...**",
+            "⏳ Waiting for DeepEval...",
+            ""
+        )
+
+        # =====================================
+        # STEP 4: GENERATOR + DEEPEVAL
+        # =====================================
+
+        result = run_generator_evaluation()
+
+        yield (
+            "✅ **Golden generation completed.**",
+            f"✅ **{len(goldens)} golden test cases validated.**",
+            "✅ **Multi-agent generation completed.**",
+            "🔄 **Evaluating Faithfulness and Answer Relevancy...**",
+            ""
+        )
+
+        # =====================================
+        # STEP 5: FORMAT RESULTS
+        # =====================================
+
+        report = format_generator_report(result)
+
+        yield (
+            "✅ **Golden generation completed.**",
+            f"✅ **{len(goldens)} golden test cases validated.**",
+            "✅ **Multi-agent generation completed.**",
+            "✅ **Generator evaluation completed!**",
+            report
+        )
+
+    except Exception as e:
+
+        yield (
+            "❌ **Generator pipeline failed.**",
+            "⏹ Check dataset generation or validation.",
+            "⏹ Generator evaluation stopped.",
+            "❌ **Evaluation not completed.**",
+            f"### Error\n```text\n{str(e)}\n```"
+        )
+
+
+
+
+# =============================================================
+# RAG PIPELINE EVALUATION CODE
+# =============================================================
+
+from evals.eval_rag_pipeline import run_rag_pipeline_gradio
+
+
+
+
+
+
 
 # =========================================================
 # PAGE NAVIGATION
@@ -528,6 +928,9 @@ PAGE_NAMES = [
     "Data Ingestion Pipeline",
     "Multi-Agent Pipeline",
     "Research Papers",
+    "Retriever",
+    "Generator Evaluation",
+    "Rag Pipeline Evaluation",
     "Settings",
 ]
 
@@ -714,6 +1117,18 @@ with gr.Blocks(
 
             papers_btn = gr.Button(
                 "📚  Research Papers",
+            )
+            
+            retriever_btn=gr.Button(
+                "Retriever Evaluation",
+            )
+            generator_btn=gr.Button(
+                "Generator Evaluation",
+            )
+            
+            rag_evaluation_pipeline_btn=gr.Button(
+                "Rag Pipeline Evaluation",
+                
             )
 
             settings_btn = gr.Button(
@@ -947,6 +1362,10 @@ with gr.Blocks(
                 # --------------------------------
 
                 gr.Markdown("---")
+                gr.Markdown("## 🧠 Dense + Sparse + RRF + Encoder")
+                with gr.Accordion("Retrieved Chunks", open=False):
+                    retrieved_chunks = gr.Markdown()
+                
                 gr.Markdown("## 🧠 Agent Analysis")
 
                 with gr.Accordion("1. Research Analyst", open=False):
@@ -997,6 +1416,7 @@ with gr.Blocks(
                 outputs=[
                     pipeline_status,
                     final_answer,
+                    retrieved_chunks,
                     analysis_output,
                     critical_output,
                     cited_analysis_output,
@@ -1033,9 +1453,195 @@ with gr.Blocks(
                 )
 
             # =========================
-            # PAGE 5: SETTINGS
+            # PAGE 5: RETRIEVER EVALUATIONS
             # =========================
 
+            with gr.Column(visible=False) as retriever_evaluation_page:
+                with gr.Tab("🔬 Retriever Evaluation"):
+
+                    gr.Markdown(
+                        """
+                        # 🔬 Retriever Evaluation Dashboard
+
+                        Evaluate Hybrid Retrieval using DeepEval.
+
+                        **Pipeline:** Golden Generation → Dataset Validation
+                        → Hybrid Retrieval → DeepEval → Results
+                        """
+                    )
+
+                    run_eval_btn = gr.Button(
+                        "▶ Run Retriever Evaluation",
+                        variant="primary"
+                    )
+
+                    # =====================================
+                    # PIPELINE STATUS
+                    # =====================================
+
+                    gr.Markdown("## ⚙️ Evaluation Pipeline")
+
+                    generation_status = gr.Markdown(
+                        "⏳ Waiting for golden dataset generation..."
+                    )
+
+                    validation_status = gr.Markdown(
+                        "⏳ Waiting for dataset validation..."
+                    )
+
+                    retrieval_status = gr.Markdown(
+                        "⏳ Waiting for retriever evaluation..."
+                    )
+
+                    evaluation_status = gr.Markdown(
+                        "⏳ Waiting for DeepEval metrics..."
+                    )
+
+                    # =====================================
+                    # FINAL REPORT
+                    # =====================================
+
+                    gr.Markdown("---")
+                    gr.Markdown("## 📊 Evaluation Results")
+
+                    evaluation_output = gr.Markdown(
+                        label="DeepEval Evaluation Report"
+                    )
+
+                    # =====================================
+                    # BUTTON EVENT
+                    # =====================================
+
+                    run_eval_btn.click(
+                        fn=run_retriever_evaluation,
+                        inputs=None,
+                        outputs=[
+                            generation_status,
+                            validation_status,
+                            retrieval_status,
+                            evaluation_status,
+                            evaluation_output
+                        ]
+                    )
+            # =========================
+            # PAGE 6: GENERATOR EVALUATION PAGE
+            # =========================
+            
+            with gr.Column(visible=False) as generator_evaluation_page:
+                with gr.Tab("🧠 Generator Evaluation"):
+                    gr.Markdown(
+                        """
+                        # 🧠 Generator Evaluation Dashboard
+
+                        Evaluate multi-agent answer generation using DeepEval.
+
+                        **Pipeline:** Golden Generation → Validation
+                        → Multi-Agent Generation → Faithfulness
+                        → Answer Relevancy
+                        """
+                    )
+
+                    run_generator_btn = gr.Button(
+                        "▶ Run Generator Evaluation",
+                        variant="primary"
+                    )
+
+                    # =====================================
+                    # PIPELINE STATUS
+                    # =====================================
+
+                    gr.Markdown("## ⚙️ Generator Evaluation Pipeline")
+
+                    gen_status = gr.Markdown(
+                        "⏳ Waiting for golden generation..."
+                    )
+
+                    gen_validation_status = gr.Markdown(
+                        "⏳ Waiting for dataset validation..."
+                    )
+
+                    multi_agent_status = gr.Markdown(
+                        "⏳ Waiting for multi-agent generation..."
+                    )
+
+                    deepeval_status = gr.Markdown(
+                        "⏳ Waiting for DeepEval..."
+                    )
+
+                    # =====================================
+                    # FINAL REPORT
+                    # =====================================
+
+                    gr.Markdown("---")
+
+                    gr.Markdown("## 📊 Generator Evaluation Results")
+
+                    generator_output = gr.Markdown(
+                        label="DeepEval Generator Report"
+                    )
+
+                    # =====================================
+                    # BUTTON EVENT
+                    # =====================================
+
+                    run_generator_btn.click(
+                        fn=run_generator_evaluation_pipeline,
+                        inputs=None,
+                        outputs=[
+                            gen_status,
+                            gen_validation_status,
+                            multi_agent_status,
+                            deepeval_status,
+                            generator_output
+                        ]
+                    )
+
+                
+                
+                              
+            # =========================
+            # PAGE 7: RAG EVALUATION PIPELINE
+            # =========================
+            
+            with gr.Column(visible=False) as rag_evaluation_pipeline_page:
+                with gr.Tab("🔬 RAG Pipeline Evaluation"):
+
+                    gr.Markdown(
+                        """
+                        # End-to-End RAG Pipeline Evaluation
+
+                        Evaluate live hybrid retrieval and multi-agent generation
+                        using DeepEval metrics.
+                        """
+                    )
+
+                    run_rag_btn = gr.Button(
+                        "🚀 Run RAG Pipeline Evaluation",
+                        variant="primary"
+                    )
+
+                    rag_status = gr.Markdown(
+                        "Waiting to start evaluation..."
+                    )
+
+                    rag_report = gr.Markdown(
+                        label="RAG Evaluation Report"
+                    )
+
+                    run_rag_btn.click(
+                        fn=run_rag_pipeline_gradio,
+                        inputs=[],
+                        outputs=[
+                            rag_status,
+                            rag_report
+                        ]
+                    )
+
+            
+            # =========================
+            # PAGE 8: SETTINGS
+            # =========================
+            
             with gr.Column(visible=False) as settings_page:
                 gr.Markdown("# ⚙️ Settings")
 
@@ -1058,6 +1664,9 @@ with gr.Blocks(
         ingestion_page,
         agents_page,
         papers_page,
+        retriever_evaluation_page,
+        generator_evaluation_page,
+        rag_evaluation_pipeline_page,
         settings_page,
     ]
 
@@ -1078,6 +1687,21 @@ with gr.Blocks(
 
     papers_btn.click(
         fn=lambda: navigate("Research Papers"),
+        outputs=page_outputs,
+    )
+    
+    retriever_btn.click(
+        fn=lambda: navigate("Retriever"),
+        outputs=page_outputs,
+    )
+    
+    generator_btn.click(
+        fn=lambda: navigate("Generator Evaluation"),
+        outputs=page_outputs,
+    )
+    
+    rag_evaluation_pipeline_btn.click(
+        fn=lambda: navigate("Rag Pipeline Evaluation"),
         outputs=page_outputs,
     )
 

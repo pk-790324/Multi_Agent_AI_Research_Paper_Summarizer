@@ -5,14 +5,14 @@ import re
 from datetime import datetime
 
 
-class ChunkingService:
 
+class ChunkingService:
     @staticmethod
     def section_aware_chunking(
         markdown_path: str,
         paper_title: str,
-        chunk_size: int = 1800,
-        overlap: int = 200,
+        chunk_size:int,
+        overlap: int
     ) -> tuple[list[dict], str]:
 
         markdown_path = Path(markdown_path)

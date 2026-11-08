@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 from langchain_ollama import OllamaEmbeddings
 from fastembed import SparseTextEmbedding
 from qdrant_client import QdrantClient, models
+from sentence_transformers import CrossEncoder
 
 import os
 
@@ -37,6 +38,11 @@ class HybridSearchService:
 
         self.sparse_model = SparseTextEmbedding(
             model_name="Qdrant/bm25"
+        )
+
+        # Cross-Encoder reranker
+        self.reranker = CrossEncoder(
+            "cross-encoder/ms-marco-MiniLM-L-6-v2"
         )
 
     def search(
@@ -101,22 +107,47 @@ class HybridSearchService:
             query=models.FusionQuery(
                 fusion=models.Fusion.RRF
             ),
-            limit=top_k,
+            limit=candidate_k,
             query_filter=query_filter,
             with_payload=True,
             with_vectors=False,
         )
 
-        # 5. Return a clean list for LangGraph
+        # 5. Cross-Encoder reranking
+        candidates = response.points
+
+        reranker_inputs = [
+            [
+                query,
+                (point.payload or {}).get("page_content", "")
+            ]
+            for point in candidates
+        ]
+
+        reranker_scores = self.reranker.predict(
+            reranker_inputs
+        )
+
+        # Sort candidates by Cross-Encoder relevance score
+        reranked_candidates = sorted(
+            zip(candidates, reranker_scores),
+            key=lambda item: item[1],
+            reverse=True
+        )
+
+        # 6. Return top_k reranked results
         results = []
 
-        for rank, point in enumerate(response.points, start=1):
+        for rank, (point, rerank_score) in enumerate(
+            reranked_candidates[:top_k], start=1
+        ):
             payload = point.payload or {}
 
             results.append(
                 {
                     "rank": rank,
                     "score": point.score,
+                    "rerank_score": float(rerank_score),
                     "page_start": payload.get("page_start"),
                     "page_end": payload.get("page_end"),
                     "page_content": payload.get("page_content", ""),
@@ -129,3 +160,4 @@ class HybridSearchService:
             )
 
         return results
+

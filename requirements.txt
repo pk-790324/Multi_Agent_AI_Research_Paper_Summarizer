@@ -28,3 +28,5 @@ docling
 mineru[all]
 rank-bm25
 fastembed
+deepeval
+sentence-transformers

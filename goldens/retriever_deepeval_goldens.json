@@ -1,0 +1,34 @@
+[
+  {
+    "id": "g001",
+    "query": "Does BitNet b1.58 (3.9B) offer 2.4x faster speed and 3.32x less memory than LLaMA 3B?",
+    "ideal_answer": "Yes, BitNet b1.58 with a 3.9B model size is 2.4 times faster and consumes 3.32 times less memory than LLaMA LLM 3B.",
+    "expected_retrieval_context": [
+      "We compared BitNet b1.58 to our reproduced FP16 LLaMA LLM in various sizes. To ensure a fair comparison, we pre-trained the models on the RedPajama dataset [Com23] for 100 billion tokens. We evaluated the zero-shot performance on a range of language tasks, including ARC-Easy [YBS19], ARC-Challenge [YBS19], Hellaswag [ZHB + 19], Winogrande [SBBC20], PIQA [BZB + 19], OpenbookQA [MCKS18], and BoolQ [CLC + 19]. We also reported the validation perplexity on the WikiText2 [MXBS16] and C4 [RSR + 19] datasets. We compared the runtime GPU memory and latency of both LLaMA LLM and BitNet b1.58. The results were measured using the FasterTransformer 3 codebase, which is well-optimized for LLM inference latency on GPU devices. The 2-bit kernel from Ladder [WMC + 23] is also integrated for BitNet b1.58. We reported the time per output token, as it is the major cost for inference. Table 1 summarizes the perplexity and the cost for BitNet b1.58 and LLaMA LLM. It shows that BitNet b1.58 starts to match full precision LLaMA LLM at 3B model size in terms of perplexity, while being 2.71 times faster and using 3.55 times less GPU memory. In particular, BitNet b1.58 with a 3.9B model size is 2.4 times faster, consumes 3.32 times less memory, but performs significantly better than LLaMA LLM 3B. [2 https://github.com/ggerganov/llama.cpp](https://github.com/ggerganov/llama.cpp) [3 https://github.com/NVIDIA/FasterTransformer](https://github.com/NVIDIA/FasterTransformer)"
+    ],
+    "source": {
+      "chunk_id": 8,
+      "paper_title": "The Era of 1-bit LLMs",
+      "section": "3 Results",
+      "page_start": 3,
+      "page_end": 3,
+      "source_file": "parsed_papers\\The Era of 1-bit LLMs.md"
+    }
+  },
+  {
+    "id": "g002",
+    "query": "If Zhang and Stoica wrote on pagedattention, how does it manage LLM memory?",
+    "ideal_answer": "The provided text does not explain how pagedattention manages LLM memory; it only lists the publication title and authors.",
+    "expected_retrieval_context": [
+      "ez, Hao Zhang, and Ion Stoica. Efficient memory management for large language model serving with pagedattention. In Proceedings of the ACM SIGOPS 29th Symposium on Operating Systems Principles , 2023. [5 https://groq.com/](https://groq.com/)"
+    ],
+    "source": {
+      "chunk_id": 18,
+      "paper_title": "The Era of 1-bit LLMs",
+      "section": "References",
+      "page_start": 6,
+      "page_end": 6,
+      "source_file": "parsed_papers\\The Era of 1-bit LLMs.md"
+    }
+  }
+]

@@ -1,0 +1,100 @@
+{
+    "evaluation": "Orchestrator Agent",
+    "timestamp": "2026-11-08T10:20:35.068653",
+    "total_cases": 10,
+    "correct_routes": 0,
+    "incorrect_routes": 10,
+    "routing_accuracy": 0.0,
+    "results": [
+        {
+            "case_id": 1,
+            "scenario": "Initial workflow",
+            "expected": "retriever",
+            "predicted": null,
+            "passed": false,
+            "routing_reason": "",
+            "error": "Invalid json output: retriever\nFor troubleshooting, visit: https://docs.langchain.com/oss/python/langchain/errors/OUTPUT_PARSING_FAILURE "
+        },
+        {
+            "case_id": 2,
+            "scenario": "Documents retrieved, analysis missing",
+            "expected": "analyst",
+            "predicted": null,
+            "passed": false,
+            "routing_reason": "",
+            "error": "Invalid json output: analyst\nFor troubleshooting, visit: https://docs.langchain.com/oss/python/langchain/errors/OUTPUT_PARSING_FAILURE "
+        },
+        {
+            "case_id": 3,
+            "scenario": "Analysis ready for review",
+            "expected": "critic",
+            "predicted": null,
+            "passed": false,
+            "routing_reason": "",
+            "error": "Invalid json output: critic\nFor troubleshooting, visit: https://docs.langchain.com/oss/python/langchain/errors/OUTPUT_PARSING_FAILURE "
+        },
+        {
+            "case_id": 4,
+            "scenario": "Critic requests more retrieval",
+            "expected": "retriever",
+            "predicted": null,
+            "passed": false,
+            "routing_reason": "",
+            "error": "Invalid json output: retriever\nFor troubleshooting, visit: https://docs.langchain.com/oss/python/langchain/errors/OUTPUT_PARSING_FAILURE "
+        },
+        {
+            "case_id": 5,
+            "scenario": "Critic rejects analysis",
+            "expected": "analyst",
+            "predicted": null,
+            "passed": false,
+            "routing_reason": "",
+            "error": "Invalid json output: analyst\nFor troubleshooting, visit: https://docs.langchain.com/oss/python/langchain/errors/OUTPUT_PARSING_FAILURE "
+        },
+        {
+            "case_id": 6,
+            "scenario": "Critic approves, citation missing",
+            "expected": "citation",
+            "predicted": null,
+            "passed": false,
+            "routing_reason": "",
+            "error": "Invalid json output: citation\nFor troubleshooting, visit: https://docs.langchain.com/oss/python/langchain/errors/OUTPUT_PARSING_FAILURE "
+        },
+        {
+            "case_id": 7,
+            "scenario": "Critic approves, citations available",
+            "expected": "synthesizer",
+            "predicted": null,
+            "passed": false,
+            "routing_reason": "",
+            "error": "Invalid json output: synthesizer\nFor troubleshooting, visit: https://docs.langchain.com/oss/python/langchain/errors/OUTPUT_PARSING_FAILURE "
+        },
+        {
+            "case_id": 8,
+            "scenario": "Rejected verdict takes priority",
+            "expected": "analyst",
+            "predicted": null,
+            "passed": false,
+            "routing_reason": "",
+            "error": "Invalid json output: analyst\nFor troubleshooting, visit: https://docs.langchain.com/oss/python/langchain/errors/OUTPUT_PARSING_FAILURE "
+        },
+        {
+            "case_id": 9,
+            "scenario": "More retrieval takes priority",
+            "expected": "retriever",
+            "predicted": null,
+            "passed": false,
+            "routing_reason": "",
+            "error": "Invalid json output: retriever\nFor troubleshooting, visit: https://docs.langchain.com/oss/python/langchain/errors/OUTPUT_PARSING_FAILURE "
+        },
+        {
+            "case_id": 10,
+            "scenario": "Invalid critic verdict",
+            "expected": "critic",
+            "predicted": null,
+            "passed": false,
+            "routing_reason": "",
+            "error": "Invalid json output: critic\nFor troubleshooting, visit: https://docs.langchain.com/oss/python/langchain/errors/OUTPUT_PARSING_FAILURE "
+        }
+    ]
+}
