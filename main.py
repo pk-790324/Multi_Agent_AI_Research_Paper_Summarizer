@@ -703,7 +703,15 @@ def run_generator_evaluation_pipeline():
 from evals.eval_rag_pipeline import run_rag_pipeline_gradio
 
 
+# =============================================================
+# LOGIN AND SIGN UP CODE
+# =============================================================
 
+from services.gradio_auth import (
+    signup_user,
+    login_user,
+    logout_user
+)
 
 
 
@@ -870,644 +878,748 @@ with gr.Blocks(
     theme=gr.themes.Soft(),
     css=CSS,
 ) as demo:
+    # Session state
+    current_user = gr.State(value=None)
+    # =========================
+    #  AUTH PAGE
+    # =========================
+    with gr.Column(visible=True) as auth_page:
+        gr.Markdown("# Research Paper Summarizer")
+        gr.Markdown("Please sign in to access your dashboard.")
 
-    gr.Markdown(
-        "# 🧠 Research Paper AI Assistant\n"
-        "Your workspace for research document processing and AI analysis.",
-        elem_id="app-header",
-    )
+        with gr.Tabs():
 
-    with gr.Row(equal_height=False):
+            # SIGNUP TAB
+            with gr.Tab("Sign Up"):
 
-        # -------------------------------------------------
-        # LEFT SIDEBAR: stays visible across all pages
-        # -------------------------------------------------
-
-        with gr.Column(
-            scale=1,
-            min_width=230,
-            elem_id="sidebar",
-        ):
-            gr.Markdown("## 📚 Research AI")
-            gr.Markdown("**WORKSPACE**")
-
-            home_btn = gr.Button(
-                "🏠  Home",
-                variant="secondary",
-            )
-
-            ingestion_btn = gr.Button(
-                "📄  Data Ingestion Pipeline",
-            )
-
-            agents_btn = gr.Button(
-                "🤖  Multi-Agent Pipeline",
-            )
-
-            papers_btn = gr.Button(
-                "📚  Research Papers",
-            )
-            
-            retriever_btn=gr.Button(
-                "Retriever Evaluation",
-            )
-            generator_btn=gr.Button(
-                "Generator Evaluation",
-            )
-            
-            rag_evaluation_pipeline_btn=gr.Button(
-                "Rag Pipeline Evaluation",
-                
-            )
-
-            settings_btn = gr.Button(
-                "⚙️  Settings",
-            )
-
-            gr.Markdown(
-                "---\n"
-                "<small>Research Paper Summarizer</small>"
-            )
-
-        # -------------------------------------------------
-        # RIGHT CONTENT: page panels
-        # -------------------------------------------------
-
-        with gr.Column(
-            scale=5,
-            elem_id="main-content",
-        ):
-
-            # =========================
-            # PAGE 1: HOME
-            # =========================
-
-            with gr.Column(visible=True) as home_page:
-                gr.Markdown(
-                    "# Welcome to Research Paper AI",
-                    elem_classes=["page-title"],
+                signup_name = gr.Textbox(
+                    label="Full Name"
                 )
 
-                gr.Markdown(
-                    "Process research papers, inspect extracted content, "
-                    "and prepare documents for multi-agent analysis."
+                signup_email = gr.Textbox(
+                    label="Email"
                 )
 
-                with gr.Row():
-                    with gr.Column(elem_classes=["feature-card"]):
-                        gr.Markdown(
-                            "### 📄 Data Ingestion\n"
-                            "Validate and parse documents, split text "
-                            "into chunks, and generate embeddings."
-                        )
-
-                        home_ingestion_btn = gr.Button(
-                            "Open Data Ingestion →",
-                            variant="primary",
-                        )
-
-                    with gr.Column(elem_classes=["feature-card"]):
-                        gr.Markdown(
-                            "### 🤖 Multi-Agent Research\n"
-                            "A dedicated workspace for future research "
-                            "summarization and critical analysis agents."
-                        )
-
-                        home_agents_btn = gr.Button(
-                            "Open Multi-Agent Pipeline →"
-                        )
-
-                gr.Markdown("## Pipeline Overview")
-
-                gr.Markdown(
-                    "| Stage | Purpose | Status |\n"
-                    "|---|---|---|\n"
-                    "| Upload | Validate and save the document | Ready |\n"
-                    "| Parsing | Convert document to Markdown | Ready |\n"
-                    "| Chunking | Split Markdown into chunks | Ready |\n"
-                    "| Embeddings | Generate vector representations | Ready |\n"
-                    "| Multi-Agent | Summarize and analyze research | Ready |"
+                signup_password = gr.Textbox(
+                    label="Password",
+                    type="password"
                 )
 
-                gr.Markdown(
-                    "*The overview describes available pipeline stages; "
-                    "it does not indicate that a pipeline has run.*",
-                    elem_classes=["muted"],
-                )
-
-            # =========================
-            # PAGE 2: DATA INGESTION
-            # =========================
-
-            with gr.Column(visible=False) as ingestion_page:
-                gr.Markdown("# 📄 Data Ingestion Pipeline")
-
-                gr.Markdown(
-                    "Upload a research document and monitor each stage "
-                    "of your existing LangGraph workflow."
-                )
-
-                with gr.Row():
-                    with gr.Column(scale=1):
-                        uploaded_file = gr.File(
-                            label="Upload Research Document",
-                            file_types=SUPPORTED_FILES,
-                            type="filepath",
-                        )
-
-                        run_button = gr.Button(
-                            "▶ Run Data Ingestion",
-                            variant="primary",
-                        )
-
-                        status_output = gr.Textbox(
-                            label="Live Pipeline Status",
-                            value="Waiting for a document...",
-                            lines=7,
-                            interactive=False,
-                            elem_classes=["status-box"],
-                        )
-
-                    with gr.Column(scale=1):
-                        report_output = gr.Code(
-                            label="Ingestion Report",
-                            language="json",
-                            interactive=False,
-                        )
-
-                gr.Markdown("## Document Inspection")
-
-                with gr.Row():
-                    with gr.Column():
-                        markdown_output = gr.Textbox(
-                            label="Parsed Markdown Preview",
-                            placeholder=(
-                                "Parsed Markdown will appear here "
-                                "when parsing completes."
-                            ),
-                            lines=22,
-                            interactive=False,
-                        )
-
-                    with gr.Column():
-                        chunk_output = gr.Textbox(
-                            label="Chunked Text Preview",
-                            placeholder=(
-                                "Chunked text will appear here "
-                                "when chunking completes."
-                            ),
-                            lines=22,
-                            interactive=False,
-                        )
-
-                run_button.click(
-                    fn=run_ingestion,
-                    inputs=[uploaded_file],
-                    outputs=[
-                        status_output,
-                        report_output,
-                        markdown_output,
-                        chunk_output,
-                    ],
-                )
-
-            # =========================
-            # PAGE 3: MULTI-AGENT
-            # =========================
-
-            with gr.Column(visible=False) as agents_page:
-                gr.Markdown(
-                    """
-                    # 🤖 Multi-Agent Research Workspace
-
-                    Ask questions about your indexed research papers.
-                    Multiple AI agents will collaborate to generate
-                    an evidence-based research report.
-                    """
-                )
-
-                # --------------------------------
-                # RESEARCH QUESTION
-                # --------------------------------
-
-                gr.Markdown("## 🔍 Research Question")
-
-                query_input = gr.Textbox(
-                    label="Enter your research question",
-                    placeholder=(
-                        "Example: Explain the abstract of "
-                        "The Era of 1-bit LLMs."
-                    ),
-                    lines=3
-                )
-
-                run_button = gr.Button(
-                    "🚀 Run Research Pipeline",
+                signup_button = gr.Button(
+                    "Create Account",
                     variant="primary"
                 )
 
-                
-                # --------------------------------
-                # LIVE EXECUTION TRACE
-                # --------------------------------
+            # LOGIN TAB
+            with gr.Tab("Login"):
 
-                gr.Markdown("---")
-                gr.Markdown("## ⚡ Agent Execution Monitor")
-
-                pipeline_progress = gr.Markdown(
-                    "**Progress:** Waiting to start"
+                login_email = gr.Textbox(
+                    label="Email"
                 )
 
-                execution_trace = gr.Dataframe(
-                    headers=[
-                        "Step",
-                        "Agent",
-                        "Status",
-                        "Executions"
-                    ],
-                    datatype=[
-                        "number",
-                        "str",
-                        "str",
-                        "number"
-                    ],
-                    value=[
-                        [1, "Orchestrator", "Waiting", 0],
-                        [2, "Retriever", "Waiting", 0],
-                        [3, "Research Analyst", "Waiting", 0],
-                        [4, "Critical Analyst", "Waiting", 0],
-                        [5, "Citation Agent", "Waiting", 0],
-                        [6, "Synthesis Writer", "Waiting", 0],
-                    ],
-                    interactive=False,
-                    wrap=True,
-                    label="Agent Execution Status"
+                login_password = gr.Textbox(
+                    label="Password",
+                    type="password"
                 )
 
-                
+                login_button = gr.Button(
+                    "Login",
+                    variant="primary"
+                )
 
-                # --------------------------------
-                # INDIVIDUAL AGENT OUTPUTS
-                # --------------------------------
+        auth_status = gr.Markdown()
+    with gr.Column(visible=False) as protected_app:
+        gr.Markdown(
+            "# 🧠 Research Paper AI Assistant\n"
+            "Your workspace for research document processing and AI analysis.",
+            elem_id="app-header",
+        )
 
-                gr.Markdown("---")
-                gr.Markdown("## 🧠 Dense + Sparse + RRF + Encoder")
-                with gr.Accordion("Retrieved Chunks", open=False):
-                    retrieved_chunks = gr.Markdown()
-                
-                gr.Markdown("## 🧠 Agent Analysis")
+        with gr.Row(equal_height=False):
 
-                with gr.Accordion("1. Research Analyst", open=False):
-                    analysis_output = gr.Markdown()
+            # -------------------------------------------------
+            # LEFT SIDEBAR: stays visible across all pages
+            # -------------------------------------------------
 
-                with gr.Accordion("2. Critical Analyst", open=False):
-                    critical_output = gr.Markdown()
+            with gr.Column(
+                scale=1,
+                min_width=230,
+                elem_id="sidebar",
+            ):
+                gr.Markdown("## 📚 Research AI")
+                gr.Markdown("**WORKSPACE**")
 
-                with gr.Accordion("3. Citation Agent", open=False):
-                    cited_analysis_output = gr.Markdown()
+                home_btn = gr.Button(
+                    "🏠  Home",
+                    variant="secondary",
+                )
 
-                # --------------------------------
-                # REFERENCES
-                # --------------------------------
+                ingestion_btn = gr.Button(
+                    "📄  Data Ingestion Pipeline",
+                )
 
-                gr.Markdown("---")
-                gr.Markdown("## 📚 Research References")
+                agents_btn = gr.Button(
+                    "🤖  Multi-Agent Pipeline",
+                )
 
-                citations_output = gr.JSON(
-                    label="Verified Citation Records"
+                papers_btn = gr.Button(
+                    "📚  Research Papers",
                 )
                 
-                # --------------------------------
-                # PIPELINE STATUS
-                # --------------------------------
-
-                pipeline_status = gr.Markdown(
-                    "Waiting for your research question..."
+                retriever_btn=gr.Button(
+                    "Retriever Evaluation",
+                )
+                generator_btn=gr.Button(
+                    "Generator Evaluation",
                 )
                 
-                # --------------------------------
-                # FINAL ANSWER
-                # --------------------------------
+                rag_evaluation_pipeline_btn=gr.Button(
+                    "Rag Pipeline Evaluation",
+                    
+                )
 
-                gr.Markdown("---")
-                gr.Markdown("## 📄 Final Research Report")
+                settings_btn = gr.Button(
+                    "⚙️  Settings",
+                )
+                
+                auth_btn=gr.Button(
+                    "Authentication",
+                    
+                )
+                
+                # Add logout button
 
-                final_answer = gr.Markdown()
-
-
-                # --------------------------------
-                # PIPELINE EXECUTION
-                # --------------------------------
-
-                run_button.click(
-                fn=run_research_pipeline,
-                inputs=[query_input],
-                outputs=[
-                    pipeline_status,
-                    final_answer,
-                    retrieved_chunks,
-                    analysis_output,
-                    critical_output,
-                    cited_analysis_output,
-                    citations_output,
-                    execution_trace,
-                    pipeline_progress,
-                    #execution_log
-                ]
-            )
-
-
-            # =========================
-            # PAGE 4: RESEARCH PAPERS
-            # =========================
-
-            with gr.Column(visible=False) as papers_page:
-                gr.Markdown("# 📚 Research Papers")
+                logout_button = gr.Button(
+                    "Logout",
+                    variant="stop"
+                )
 
                 gr.Markdown(
-                    "Documents saved by your existing upload service."
+                    "---\n"
+                    "<small>Research Paper Summarizer</small>"
                 )
 
-                refresh_papers_btn = gr.Button(
-                    "🔄 Refresh Paper List"
-                )
+            # -------------------------------------------------
+            # RIGHT CONTENT: page panels
+            # -------------------------------------------------
 
-                papers_output = gr.Markdown(
-                    "Click Refresh Paper List to view saved documents."
-                )
+            with gr.Column(
+                scale=5,
+                elem_id="main-content",
+            ):
 
-                refresh_papers_btn.click(
-                    fn=list_uploaded_papers,
-                    outputs=papers_output,
-                )
+                # =========================
+                # PAGE 1: HOME
+                # =========================
 
-            # =========================
-            # PAGE 5: RETRIEVER EVALUATIONS
-            # =========================
-
-            with gr.Column(visible=False) as retriever_evaluation_page:
-                with gr.Tab("🔬 Retriever Evaluation"):
+                with gr.Column(visible=True) as home_page:
+                    gr.Markdown(
+                        "# Welcome to Research Paper AI",
+                        elem_classes=["page-title"],
+                    )
 
                     gr.Markdown(
+                        "Process research papers, inspect extracted content, "
+                        "and prepare documents for multi-agent analysis."
+                    )
+
+                    with gr.Row():
+                        with gr.Column(elem_classes=["feature-card"]):
+                            gr.Markdown(
+                                "### 📄 Data Ingestion\n"
+                                "Validate and parse documents, split text "
+                                "into chunks, and generate embeddings."
+                            )
+
+                            home_ingestion_btn = gr.Button(
+                                "Open Data Ingestion →",
+                                variant="primary",
+                            )
+
+                        with gr.Column(elem_classes=["feature-card"]):
+                            gr.Markdown(
+                                "### 🤖 Multi-Agent Research\n"
+                                "A dedicated workspace for future research "
+                                "summarization and critical analysis agents."
+                            )
+
+                            home_agents_btn = gr.Button(
+                                "Open Multi-Agent Pipeline →"
+                            )
+
+                    gr.Markdown("## Pipeline Overview")
+
+                    gr.Markdown(
+                        "| Stage | Purpose | Status |\n"
+                        "|---|---|---|\n"
+                        "| Upload | Validate and save the document | Ready |\n"
+                        "| Parsing | Convert document to Markdown | Ready |\n"
+                        "| Chunking | Split Markdown into chunks | Ready |\n"
+                        "| Embeddings | Generate vector representations | Ready |\n"
+                        "| Multi-Agent | Summarize and analyze research | Ready |"
+                    )
+
+                    gr.Markdown(
+                        "*The overview describes available pipeline stages; "
+                        "it does not indicate that a pipeline has run.*",
+                        elem_classes=["muted"],
+                    )
+
+                # =========================
+                # PAGE 2: DATA INGESTION
+                # =========================
+
+                with gr.Column(visible=False) as ingestion_page:
+                    gr.Markdown("# 📄 Data Ingestion Pipeline")
+
+                    gr.Markdown(
+                        "Upload a research document and monitor each stage "
+                        "of your existing LangGraph workflow."
+                    )
+
+                    with gr.Row():
+                        with gr.Column(scale=1):
+                            uploaded_file = gr.File(
+                                label="Upload Research Document",
+                                file_types=SUPPORTED_FILES,
+                                type="filepath",
+                            )
+
+                            run_button = gr.Button(
+                                "▶ Run Data Ingestion",
+                                variant="primary",
+                            )
+
+                            status_output = gr.Textbox(
+                                label="Live Pipeline Status",
+                                value="Waiting for a document...",
+                                lines=7,
+                                interactive=False,
+                                elem_classes=["status-box"],
+                            )
+
+                        with gr.Column(scale=1):
+                            report_output = gr.Code(
+                                label="Ingestion Report",
+                                language="json",
+                                interactive=False,
+                            )
+
+                    gr.Markdown("## Document Inspection")
+
+                    with gr.Row():
+                        with gr.Column():
+                            markdown_output = gr.Textbox(
+                                label="Parsed Markdown Preview",
+                                placeholder=(
+                                    "Parsed Markdown will appear here "
+                                    "when parsing completes."
+                                ),
+                                lines=22,
+                                interactive=False,
+                            )
+
+                        with gr.Column():
+                            chunk_output = gr.Textbox(
+                                label="Chunked Text Preview",
+                                placeholder=(
+                                    "Chunked text will appear here "
+                                    "when chunking completes."
+                                ),
+                                lines=22,
+                                interactive=False,
+                            )
+
+                    run_button.click(
+                        fn=run_ingestion,
+                        inputs=[uploaded_file],
+                        outputs=[
+                            status_output,
+                            report_output,
+                            markdown_output,
+                            chunk_output,
+                        ],
+                    )
+
+                # =========================
+                # PAGE 3: MULTI-AGENT
+                # =========================
+
+                with gr.Column(visible=False) as agents_page:
+                    gr.Markdown(
                         """
-                        # 🔬 Retriever Evaluation Dashboard
+                        # 🤖 Multi-Agent Research Workspace
 
-                        Evaluate Hybrid Retrieval using DeepEval.
-
-                        **Pipeline:** Golden Generation → Dataset Validation
-                        → Hybrid Retrieval → DeepEval → Results
+                        Ask questions about your indexed research papers.
+                        Multiple AI agents will collaborate to generate
+                        an evidence-based research report.
                         """
                     )
 
-                    run_eval_btn = gr.Button(
-                        "▶ Run Retriever Evaluation",
+                    # --------------------------------
+                    # RESEARCH QUESTION
+                    # --------------------------------
+
+                    gr.Markdown("## 🔍 Research Question")
+
+                    query_input = gr.Textbox(
+                        label="Enter your research question",
+                        placeholder=(
+                            "Example: Explain the abstract of "
+                            "The Era of 1-bit LLMs."
+                        ),
+                        lines=3
+                    )
+
+                    run_button = gr.Button(
+                        "🚀 Run Research Pipeline",
                         variant="primary"
                     )
 
-                    # =====================================
-                    # PIPELINE STATUS
-                    # =====================================
-
-                    gr.Markdown("## ⚙️ Evaluation Pipeline")
-
-                    generation_status = gr.Markdown(
-                        "⏳ Waiting for golden dataset generation..."
-                    )
-
-                    validation_status = gr.Markdown(
-                        "⏳ Waiting for dataset validation..."
-                    )
-
-                    retrieval_status = gr.Markdown(
-                        "⏳ Waiting for retriever evaluation..."
-                    )
-
-                    evaluation_status = gr.Markdown(
-                        "⏳ Waiting for DeepEval metrics..."
-                    )
-
-                    # =====================================
-                    # FINAL REPORT
-                    # =====================================
+                    
+                    # --------------------------------
+                    # LIVE EXECUTION TRACE
+                    # --------------------------------
 
                     gr.Markdown("---")
-                    gr.Markdown("## 📊 Evaluation Results")
+                    gr.Markdown("## ⚡ Agent Execution Monitor")
 
-                    evaluation_output = gr.Markdown(
-                        label="DeepEval Evaluation Report"
+                    pipeline_progress = gr.Markdown(
+                        "**Progress:** Waiting to start"
                     )
 
-                    # =====================================
-                    # BUTTON EVENT
-                    # =====================================
-
-                    run_eval_btn.click(
-                        fn=run_retriever_evaluation,
-                        inputs=None,
-                        outputs=[
-                            generation_status,
-                            validation_status,
-                            retrieval_status,
-                            evaluation_status,
-                            evaluation_output
-                        ]
-                    )
-            # =========================
-            # PAGE 6: GENERATOR EVALUATION PAGE
-            # =========================
-            
-            with gr.Column(visible=False) as generator_evaluation_page:
-                with gr.Tab("🧠 Generator Evaluation"):
-                    gr.Markdown(
-                        """
-                        # 🧠 Generator Evaluation Dashboard
-
-                        Evaluate multi-agent answer generation using DeepEval.
-
-                        **Pipeline:** Golden Generation → Validation
-                        → Multi-Agent Generation → Faithfulness
-                        → Answer Relevancy
-                        """
+                    execution_trace = gr.Dataframe(
+                        headers=[
+                            "Step",
+                            "Agent",
+                            "Status",
+                            "Executions"
+                        ],
+                        datatype=[
+                            "number",
+                            "str",
+                            "str",
+                            "number"
+                        ],
+                        value=[
+                            [1, "Orchestrator", "Waiting", 0],
+                            [2, "Retriever", "Waiting", 0],
+                            [3, "Research Analyst", "Waiting", 0],
+                            [4, "Critical Analyst", "Waiting", 0],
+                            [5, "Citation Agent", "Waiting", 0],
+                            [6, "Synthesis Writer", "Waiting", 0],
+                        ],
+                        interactive=False,
+                        wrap=True,
+                        label="Agent Execution Status"
                     )
 
-                    run_generator_btn = gr.Button(
-                        "▶ Run Generator Evaluation",
-                        variant="primary"
-                    )
+                    
 
-                    # =====================================
-                    # PIPELINE STATUS
-                    # =====================================
-
-                    gr.Markdown("## ⚙️ Generator Evaluation Pipeline")
-
-                    gen_status = gr.Markdown(
-                        "⏳ Waiting for golden generation..."
-                    )
-
-                    gen_validation_status = gr.Markdown(
-                        "⏳ Waiting for dataset validation..."
-                    )
-
-                    multi_agent_status = gr.Markdown(
-                        "⏳ Waiting for multi-agent generation..."
-                    )
-
-                    deepeval_status = gr.Markdown(
-                        "⏳ Waiting for DeepEval..."
-                    )
-
-                    # =====================================
-                    # FINAL REPORT
-                    # =====================================
+                    # --------------------------------
+                    # INDIVIDUAL AGENT OUTPUTS
+                    # --------------------------------
 
                     gr.Markdown("---")
+                    gr.Markdown("## 🧠 Dense + Sparse + RRF + Encoder")
+                    with gr.Accordion("Retrieved Chunks", open=False):
+                        retrieved_chunks = gr.Markdown()
+                    
+                    gr.Markdown("## 🧠 Agent Analysis")
 
-                    gr.Markdown("## 📊 Generator Evaluation Results")
+                    with gr.Accordion("1. Research Analyst", open=False):
+                        analysis_output = gr.Markdown()
 
-                    generator_output = gr.Markdown(
-                        label="DeepEval Generator Report"
+                    with gr.Accordion("2. Critical Analyst", open=False):
+                        critical_output = gr.Markdown()
+
+                    with gr.Accordion("3. Citation Agent", open=False):
+                        cited_analysis_output = gr.Markdown()
+
+                    # --------------------------------
+                    # REFERENCES
+                    # --------------------------------
+
+                    gr.Markdown("---")
+                    gr.Markdown("## 📚 Research References")
+
+                    citations_output = gr.JSON(
+                        label="Verified Citation Records"
                     )
+                    
+                    # --------------------------------
+                    # PIPELINE STATUS
+                    # --------------------------------
 
-                    # =====================================
-                    # BUTTON EVENT
-                    # =====================================
-
-                    run_generator_btn.click(
-                        fn=run_generator_evaluation_pipeline,
-                        inputs=None,
-                        outputs=[
-                            gen_status,
-                            gen_validation_status,
-                            multi_agent_status,
-                            deepeval_status,
-                            generator_output
-                        ]
+                    pipeline_status = gr.Markdown(
+                        "Waiting for your research question..."
                     )
+                    
+                    # --------------------------------
+                    # FINAL ANSWER
+                    # --------------------------------
 
-                
-                
-                              
-            # =========================
-            # PAGE 7: RAG EVALUATION PIPELINE
-            # =========================
-            
-            with gr.Column(visible=False) as rag_evaluation_pipeline_page:
-                with gr.Tab("🔬 RAG Pipeline Evaluation"):
+                    gr.Markdown("---")
+                    gr.Markdown("## 📄 Final Research Report")
+
+                    final_answer = gr.Markdown()
+
+
+                    # --------------------------------
+                    # PIPELINE EXECUTION
+                    # --------------------------------
+
+                    run_button.click(
+                    fn=run_research_pipeline,
+                    inputs=[query_input],
+                    outputs=[
+                        pipeline_status,
+                        final_answer,
+                        retrieved_chunks,
+                        analysis_output,
+                        critical_output,
+                        cited_analysis_output,
+                        citations_output,
+                        execution_trace,
+                        pipeline_progress,
+                        #execution_log
+                    ]
+                )
+
+
+                # =========================
+                # PAGE 4: RESEARCH PAPERS
+                # =========================
+
+                with gr.Column(visible=False) as papers_page:
+                    gr.Markdown("# 📚 Research Papers")
 
                     gr.Markdown(
-                        """
-                        # End-to-End RAG Pipeline Evaluation
-
-                        Evaluate live hybrid retrieval and multi-agent generation
-                        using DeepEval metrics.
-                        """
+                        "Documents saved by your existing upload service."
                     )
 
-                    run_rag_btn = gr.Button(
-                        "🚀 Run RAG Pipeline Evaluation",
-                        variant="primary"
+                    refresh_papers_btn = gr.Button(
+                        "🔄 Refresh Paper List"
                     )
 
-                    rag_status = gr.Markdown(
-                        "Waiting to start evaluation..."
+                    papers_output = gr.Markdown(
+                        "Click Refresh Paper List to view saved documents."
                     )
 
-                    rag_report = gr.Markdown(
-                        label="RAG Evaluation Report"
+                    refresh_papers_btn.click(
+                        fn=list_uploaded_papers,
+                        outputs=papers_output,
                     )
 
-                    run_rag_btn.click(
-                        fn=run_rag_pipeline_gradio,
-                        inputs=[],
-                        outputs=[
-                            rag_status,
-                            rag_report
-                        ]
+                # =========================
+                # PAGE 5: RETRIEVER EVALUATIONS
+                # =========================
+
+                with gr.Column(visible=False) as retriever_evaluation_page:
+                    with gr.Group():
+
+                        gr.Markdown(
+                            """
+                            # 🔬 Retriever Evaluation Dashboard
+
+                            Evaluate Hybrid Retrieval using DeepEval.
+
+                            **Pipeline:** Golden Generation → Dataset Validation
+                            → Hybrid Retrieval → DeepEval → Results
+                            """
+                        )
+
+                        run_eval_btn = gr.Button(
+                            "▶ Run Retriever Evaluation",
+                            variant="primary"
+                        )
+
+                        # =====================================
+                        # PIPELINE STATUS
+                        # =====================================
+
+                        gr.Markdown("## ⚙️ Evaluation Pipeline")
+
+                        generation_status = gr.Markdown(
+                            "⏳ Waiting for golden dataset generation..."
+                        )
+
+                        validation_status = gr.Markdown(
+                            "⏳ Waiting for dataset validation..."
+                        )
+
+                        retrieval_status = gr.Markdown(
+                            "⏳ Waiting for retriever evaluation..."
+                        )
+
+                        evaluation_status = gr.Markdown(
+                            "⏳ Waiting for DeepEval metrics..."
+                        )
+
+                        # =====================================
+                        # FINAL REPORT
+                        # =====================================
+
+                        gr.Markdown("---")
+                        gr.Markdown("## 📊 Evaluation Results")
+
+                        evaluation_output = gr.Markdown(
+                            label="DeepEval Evaluation Report"
+                        )
+
+                        # =====================================
+                        # BUTTON EVENT
+                        # =====================================
+
+                        run_eval_btn.click(
+                            fn=run_retriever_evaluation,
+                            inputs=None,
+                            outputs=[
+                                generation_status,
+                                validation_status,
+                                retrieval_status,
+                                evaluation_status,
+                                evaluation_output
+                            ]
+                        )
+                # =========================
+                # PAGE 6: GENERATOR EVALUATION PAGE
+                # =========================
+                
+                with gr.Column(visible=False) as generator_evaluation_page:
+                    with gr.Group():
+                        gr.Markdown(
+                            """
+                            # 🧠 Generator Evaluation Dashboard
+
+                            Evaluate multi-agent answer generation using DeepEval.
+
+                            **Pipeline:** Golden Generation → Validation
+                            → Multi-Agent Generation → Faithfulness
+                            → Answer Relevancy
+                            """
+                        )
+
+                        run_generator_btn = gr.Button(
+                            "▶ Run Generator Evaluation",
+                            variant="primary"
+                        )
+
+                        # =====================================
+                        # PIPELINE STATUS
+                        # =====================================
+
+                        gr.Markdown("## ⚙️ Generator Evaluation Pipeline")
+
+                        gen_status = gr.Markdown(
+                            "⏳ Waiting for golden generation..."
+                        )
+
+                        gen_validation_status = gr.Markdown(
+                            "⏳ Waiting for dataset validation..."
+                        )
+
+                        multi_agent_status = gr.Markdown(
+                            "⏳ Waiting for multi-agent generation..."
+                        )
+
+                        deepeval_status = gr.Markdown(
+                            "⏳ Waiting for DeepEval..."
+                        )
+
+                        # =====================================
+                        # FINAL REPORT
+                        # =====================================
+
+                        gr.Markdown("---")
+
+                        gr.Markdown("## 📊 Generator Evaluation Results")
+
+                        generator_output = gr.Markdown(
+                            label="DeepEval Generator Report"
+                        )
+
+                        # =====================================
+                        # BUTTON EVENT
+                        # =====================================
+
+                        run_generator_btn.click(
+                            fn=run_generator_evaluation_pipeline,
+                            inputs=None,
+                            outputs=[
+                                gen_status,
+                                gen_validation_status,
+                                multi_agent_status,
+                                deepeval_status,
+                                generator_output
+                            ]
+                        )
+
+                    
+                    
+                                
+                # =========================
+                # PAGE 7: RAG EVALUATION PIPELINE
+                # =========================
+                
+                with gr.Column(visible=False) as rag_evaluation_pipeline_page:
+                    with gr.Group():
+
+                        gr.Markdown(
+                            """
+                            # End-to-End RAG Pipeline Evaluation
+
+                            Evaluate live hybrid retrieval and multi-agent generation
+                            using DeepEval metrics.
+                            """
+                        )
+
+                        run_rag_btn = gr.Button(
+                            "🚀 Run RAG Pipeline Evaluation",
+                            variant="primary"
+                        )
+
+                        rag_status = gr.Markdown(
+                            "Waiting to start evaluation..."
+                        )
+
+                        rag_report = gr.Markdown(
+                            label="RAG Evaluation Report"
+                        )
+
+                        run_rag_btn.click(
+                            fn=run_rag_pipeline_gradio,
+                            inputs=[],
+                            outputs=[
+                                rag_status,
+                                rag_report
+                            ]
+                        )
+
+                
+                # =========================
+                # PAGE 8: SETTINGS
+                # =========================
+                
+                with gr.Column(visible=False) as settings_page:
+                    gr.Markdown("# ⚙️ Settings")
+
+                    gr.Markdown(
+                        "### Project Information\n\n"
+                        f"- **Project:** Research Paper AI Assistant\n"
+                        f"- **Framework:** Gradio\n"
+                        f"- **Workflow orchestration:** LangGraph\n"
+                        f"- **Project directory:** `{PROJECT_DIR}`\n\n"
+                        "### Supported document types\n\n"
+                        + ", ".join(SUPPORTED_FILES)
                     )
-
-            
-            # =========================
-            # PAGE 8: SETTINGS
-            # =========================
-            
-            with gr.Column(visible=False) as settings_page:
-                gr.Markdown("# ⚙️ Settings")
-
-                gr.Markdown(
-                    "### Project Information\n\n"
-                    f"- **Project:** Research Paper AI Assistant\n"
-                    f"- **Framework:** Gradio\n"
-                    f"- **Workflow orchestration:** LangGraph\n"
-                    f"- **Project directory:** `{PROJECT_DIR}`\n\n"
-                    "### Supported document types\n\n"
-                    + ", ".join(SUPPORTED_FILES)
-                )
 
     # -----------------------------------------------------
     # CONNECT SIDEBAR BUTTONS TO PAGE PANELS
     # -----------------------------------------------------
 
-    page_outputs = [
-        home_page,
-        ingestion_page,
-        agents_page,
-        papers_page,
-        retriever_evaluation_page,
-        generator_evaluation_page,
-        rag_evaluation_pipeline_page,
-        settings_page,
-    ]
+        page_outputs = [
+            home_page,
+            ingestion_page,
+            agents_page,
+            papers_page,
+            retriever_evaluation_page,
+            generator_evaluation_page,
+            rag_evaluation_pipeline_page,
+            settings_page,
+            
+           
+        ]
 
-    home_btn.click(
-        fn=lambda: navigate("Home"),
-        outputs=page_outputs,
+        home_btn.click(
+            fn=lambda: navigate("Home"),
+            outputs=page_outputs,
+        )
+
+        ingestion_btn.click(
+            fn=lambda: navigate("Data Ingestion Pipeline"),
+            outputs=page_outputs,
+        )
+
+        agents_btn.click(
+            fn=lambda: navigate("Multi-Agent Pipeline"),
+            outputs=page_outputs,
+        )
+
+        papers_btn.click(
+            fn=lambda: navigate("Research Papers"),
+            outputs=page_outputs,
+        )
+        
+        retriever_btn.click(
+            fn=lambda: navigate("Retriever"),
+            outputs=page_outputs,
+        )
+        
+        generator_btn.click(
+            fn=lambda: navigate("Generator Evaluation"),
+            outputs=page_outputs,
+        )
+        
+        rag_evaluation_pipeline_btn.click(
+            fn=lambda: navigate("Rag Pipeline Evaluation"),
+            outputs=page_outputs,
+        )
+
+        settings_btn.click(
+            fn=lambda: navigate("Settings"),
+            outputs=page_outputs,
+        )
+        
+       
+
+        # Quick links from the Home page.
+        home_ingestion_btn.click(
+            fn=lambda: navigate("Data Ingestion Pipeline"),
+            outputs=page_outputs,
+        )
+
+        home_agents_btn.click(
+            fn=lambda: navigate("Multi-Agent Pipeline"),
+            outputs=page_outputs,
+        )
+        
+      # ==================================
+    # EVENT HANDLERS
+    # ==================================
+
+    signup_button.click(
+        fn=signup_user,
+        inputs=[
+            signup_name,
+            signup_email,
+            signup_password
+        ],
+        outputs=auth_status
     )
 
-    ingestion_btn.click(
-        fn=lambda: navigate("Data Ingestion Pipeline"),
-        outputs=page_outputs,
+    login_button.click(
+        fn=login_user,
+        inputs=[
+            login_email,
+            login_password
+        ],
+        outputs=[
+            auth_page,
+            protected_app,
+            auth_status,
+            current_user
+        ]
     )
 
-    agents_btn.click(
-        fn=lambda: navigate("Multi-Agent Pipeline"),
-        outputs=page_outputs,
-    )
-
-    papers_btn.click(
-        fn=lambda: navigate("Research Papers"),
-        outputs=page_outputs,
-    )
-    
-    retriever_btn.click(
-        fn=lambda: navigate("Retriever"),
-        outputs=page_outputs,
-    )
-    
-    generator_btn.click(
-        fn=lambda: navigate("Generator Evaluation"),
-        outputs=page_outputs,
-    )
-    
-    rag_evaluation_pipeline_btn.click(
-        fn=lambda: navigate("Rag Pipeline Evaluation"),
-        outputs=page_outputs,
-    )
-
-    settings_btn.click(
-        fn=lambda: navigate("Settings"),
-        outputs=page_outputs,
-    )
-
-    # Quick links from the Home page.
-    home_ingestion_btn.click(
-        fn=lambda: navigate("Data Ingestion Pipeline"),
-        outputs=page_outputs,
-    )
-
-    home_agents_btn.click(
-        fn=lambda: navigate("Multi-Agent Pipeline"),
-        outputs=page_outputs,
+    logout_button.click(
+        fn=logout_user,
+        inputs=None,
+        outputs=[
+            auth_page,
+            protected_app,
+            current_user
+        ]
     )
 
 

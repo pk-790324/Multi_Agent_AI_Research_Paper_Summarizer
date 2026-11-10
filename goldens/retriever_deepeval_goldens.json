@@ -1,34 +1,34 @@
 [
   {
     "id": "g001",
-    "query": "Does BitNet b1.58 (3.9B) offer 2.4x faster speed and 3.32x less memory than LLaMA 3B?",
-    "ideal_answer": "Yes, BitNet b1.58 with a 3.9B model size is 2.4 times faster and consumes 3.32 times less memory than LLaMA LLM 3B.",
+    "query": "Rewritten Input: How do DAU, revenue, and ROI influence launch decisions beyond logistic loss improvements?",
+    "ideal_answer": "Launch decisions aren’t made on logistic‑loss gains alone. Even if a new feature lowers loss and lifts install rates, the team must check how it impacts the broader health metrics they actually care about—daily active users (1‑day and 30‑day DAU), revenue, and advertisers’ ROI.  \n\n* **DAU** reflects user engagement; a drop (as in Alice’s case) signals that the model may be hurting retention, outweighing any install‑rate boost.  \n* **Revenue** shows whether the extra installs translate into monetary value; a model that raises installs but cuts revenue isn’t worthwhile.  \n* **Advertiser ROI** gauges partner satisfaction; if ROI falls, partners may pull spend, harming long‑term profitability.\n\nOnly when a change improves (or at least doesn’t worsen) all of these metrics does it become a clear candidate for launch. If a simpler heuristic outperforms a sophisticated model across DAU, revenue, and ROI, the heuristic should be chosen, because there’s no single ranking that can replace these real‑world proxies for product health and future success.",
     "expected_retrieval_context": [
-      "We compared BitNet b1.58 to our reproduced FP16 LLaMA LLM in various sizes. To ensure a fair comparison, we pre-trained the models on the RedPajama dataset [Com23] for 100 billion tokens. We evaluated the zero-shot performance on a range of language tasks, including ARC-Easy [YBS19], ARC-Challenge [YBS19], Hellaswag [ZHB + 19], Winogrande [SBBC20], PIQA [BZB + 19], OpenbookQA [MCKS18], and BoolQ [CLC + 19]. We also reported the validation perplexity on the WikiText2 [MXBS16] and C4 [RSR + 19] datasets. We compared the runtime GPU memory and latency of both LLaMA LLM and BitNet b1.58. The results were measured using the FasterTransformer 3 codebase, which is well-optimized for LLM inference latency on GPU devices. The 2-bit kernel from Ladder [WMC + 23] is also integrated for BitNet b1.58. We reported the time per output token, as it is the major cost for inference. Table 1 summarizes the perplexity and the cost for BitNet b1.58 and LLaMA LLM. It shows that BitNet b1.58 starts to match full precision LLaMA LLM at 3B model size in terms of perplexity, while being 2.71 times faster and using 3.55 times less GPU memory. In particular, BitNet b1.58 with a 3.9B model size is 2.4 times faster, consumes 3.32 times less memory, but performs significantly better than LLaMA LLM 3B. [2 https://github.com/ggerganov/llama.cpp](https://github.com/ggerganov/llama.cpp) [3 https://github.com/NVIDIA/FasterTransformer](https://github.com/NVIDIA/FasterTransformer)"
+      "Alice has an idea about reducing the logistic loss of predicting installs. She adds a feature. The logistic loss drops. When she does a live experiment, she sees the install rate increase. However, when she goes to a launch review meeting, someone points out that the number of daily active users drops by 5%. The team decides not to launch the model. Alice is disappointed, but now realizes that launch decisions depend on multiple criteria, only some of which can be directly optimized using ML. The truth is that the real world is not dungeons and dragons: there are no 'hit points' identifying the health of your product. The team has to use the statistics it gathers to try to effectively predict how good the system will be in the future. They need to care about engagement, 1 day active users (DAU), 30 DAU, revenue, and advertiser's return on investment. These metrics that are measureable in A/B tests in themselves are only a proxy for more long­term goals: satisfying users, increasing users, satisfying partners, and profit, which even then you could consider proxies for having a useful, high quality product and a thriving company five years from now. The only easy launch decisions are when all metrics get better (or at least do not get worse). If the team has a choice between a sophisticated machine learning algorithm, and a simple heuristic, if the simple heuristic does a better job on all these metrics, it should choose the heuristic. Moreover, there is no explicit ranking of all possible metric values."
     ],
     "source": {
-      "chunk_id": 8,
-      "paper_title": "The Era of 1-bit LLMs",
-      "section": "3 Results",
-      "page_start": 3,
-      "page_end": 3,
-      "source_file": "parsed_papers\\The Era of 1-bit LLMs.md"
+      "chunk_id": 66,
+      "paper_title": "rules of ml",
+      "section": "Rule   #39:   Launch   decisions   are   a   proxy   for   long­term   product   goals.",
+      "page_start": 20,
+      "page_end": 20,
+      "source_file": "parsed_papers\\rules_of_ml.md"
     }
   },
   {
     "id": "g002",
-    "query": "If Zhang and Stoica wrote on pagedattention, how does it manage LLM memory?",
-    "ideal_answer": "The provided text does not explain how pagedattention manages LLM memory; it only lists the publication title and authors.",
+    "query": "If metrics plateau and objectives miss product goals, revise algorithmic objective, product goals, or both?",
+    "ideal_answer": "If your metrics have plateaued and the current objective no longer aligns with product goals, you should adjust the mis‑aligned side—either revise the algorithmic objective, change the product goals, or do both if needed. The key is to ensure the objective directly supports the product goals.",
     "expected_retrieval_context": [
-      "ez, Hao Zhang, and Ion Stoica. Efficient memory management for large language model serving with pagedattention. In Proceedings of the ACM SIGOPS 29th Symposium on Operating Systems Principles , 2023. [5 https://groq.com/](https://groq.com/)"
+      "As your measurements plateau, your team will start to look at issues that are outside the scope of the objectives of your current machine learning system. As stated before, if the product goals are not covered by the existing algorithmic objective, you need to change either your objective or your product goals. For instance, you may optimize clicks, plus­ones, or downloads, but make launch decisions based in part on human raters."
     ],
     "source": {
-      "chunk_id": 18,
-      "paper_title": "The Era of 1-bit LLMs",
-      "section": "References",
-      "page_start": 6,
-      "page_end": 6,
-      "source_file": "parsed_papers\\The Era of 1-bit LLMs.md"
+      "chunk_id": 65,
+      "paper_title": "rules of ml",
+      "section": "Rule   #38:   Don't   waste   time   on   new   features   if   unaligned   objectives   have   become   the issue.",
+      "page_start": 20,
+      "page_end": 20,
+      "source_file": "parsed_papers\\rules_of_ml.md"
     }
   }
 ]

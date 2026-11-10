@@ -139,6 +139,7 @@ def orchestrator_agent(state: ResearchState):
     if state.get("review_limit_reached", False):
         return {
             "next_agent": "synthesizer",
+            "llm_selected_agent": None,
             "routing_reason": (
                 "Attempt limit reached. Proceeding to final synthesis."
             ),
@@ -219,7 +220,7 @@ CITED ANALYSIS AVAILABLE:
 
 Which agent should execute next?
 """
-
+    llm_selected_agent = None
     try:
 
         response = llm.invoke(
@@ -230,7 +231,7 @@ Which agent should execute next?
         )
 
         next_agent = parse_routing_response(response)
-
+        llm_selected_agent = next_agent
         if next_agent is None:
             raise ValueError(
                 f"Could not parse routing response: {response.content}"
@@ -305,6 +306,7 @@ Which agent should execute next?
 
     result = {
         "next_agent": next_agent,
+        "llm_selected_agent": llm_selected_agent,
         "routing_reason": routing_reason,
         "retrieval_attempts": retrieval_attempts,
         "analyst_attempts": analyst_attempts,

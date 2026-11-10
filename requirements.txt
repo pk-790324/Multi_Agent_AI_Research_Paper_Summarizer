@@ -30,3 +30,8 @@ fastembed
 deepeval
 sentence-transformers
 requests
+uvicorn
+pymongo
+pydantic[email]
+pwdlib[argon2]
+httpx

@@ -44,6 +44,7 @@ class ResearchState(TypedDict, total=False):
     # ========================================================
 
     analysis: str
+    critique: str
     critical_analysis: str
     analyst_feedback: str
     # In ResearchState
@@ -69,6 +70,7 @@ class ResearchState(TypedDict, total=False):
     # ========================================================
 
     next_agent: str
+    llm_selected_agent: Optional[str]
     completed_agents: list[str]
 
     # ========================================================
