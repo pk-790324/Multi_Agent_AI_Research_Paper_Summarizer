@@ -3,7 +3,7 @@ import json
 
 from pathlib import Path
 
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 from fastapi.responses import StreamingResponse
 
 from api.ingestion_service import run_ingestion_pipeline
@@ -27,7 +27,8 @@ UPLOADED_DIR.mkdir(parents=True, exist_ok=True)
 
 @router.post("/upload")
 async def upload_document(
-    file: UploadFile = File(...)
+    file: UploadFile = File(...),
+    user_id: str = Form(...)
 ):
     """
     Upload a document and stream ingestion progress.
@@ -72,7 +73,10 @@ async def upload_document(
 
     def event_generator():
 
-        for event in run_ingestion_pipeline(str(file_path)):
+        for event in run_ingestion_pipeline(
+            str(file_path),
+            {"id": user_id},
+        ):
 
             yield (
                 "data: "

@@ -57,12 +57,34 @@ builder.add_node("parser", with_status("Parsing", parser_node))
 builder.add_node("chunking", with_status("Chunking", chunking_node))
 builder.add_node("embedding", with_status("Embeddings", embedding_node))
 
+
+
+
+# Conditional routing after upload
+def route_after_upload(state: ResearchPaperState):
+
+    if state.get("error"):
+        return "stop"
+
+    if state.get("is_duplicate", False):
+        return "stop"
+
+    return "continue"
+
+
 # ------------------------
 # Build Workflow
 # ------------------------
 
 builder.add_edge(START, "upload")
-builder.add_edge("upload", "parser")
+builder.add_conditional_edges(
+    "upload",
+    route_after_upload,
+    {
+        "continue": "parser",
+        "stop": END
+    }
+)
 builder.add_edge("parser", "chunking")
 builder.add_edge("chunking", "embedding")
 builder.add_edge("embedding", END)

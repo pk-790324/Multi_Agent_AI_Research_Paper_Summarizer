@@ -7,6 +7,9 @@ from typing import TypedDict, Any,Optional
 class ResearchPaperState(TypedDict, total=False):
     artifacts: dict[str, Any]
     error: str
+    # New document management fields
+    is_duplicate: bool
+    user_id: Optional[str]
 
 from typing import TypedDict, Optional
 

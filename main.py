@@ -25,7 +25,7 @@ from config import UPLOADED_DIR,SUPPORTED_FILES,STAGES,PROJECT_DIR
 API_URL = "http://127.0.0.1:8001/ingestion/upload"
 
 
-def run_ingestion(uploaded_file):
+def run_ingestion(uploaded_file,current_user):
     """
     Call FastAPI ingestion endpoint and stream
     progress updates to Gradio.
@@ -39,6 +39,15 @@ def run_ingestion(uploaded_file):
     if uploaded_file is None:
         yield (
             "Please upload a document first.",
+            "{}",
+            "",
+            ""
+        )
+        return
+
+    if not current_user or not current_user.get("id"):
+        yield (
+            "Please log in before running ingestion.",
             "{}",
             "",
             ""
@@ -65,6 +74,7 @@ def run_ingestion(uploaded_file):
                         "application/octet-stream"
                     )
                 },
+                data={"user_id": current_user["id"]},
                 headers={
                     "Accept": "text/event-stream"
                 },
@@ -1187,7 +1197,7 @@ with gr.Blocks(
 
                     run_button.click(
                         fn=run_ingestion,
-                        inputs=[uploaded_file],
+                        inputs=[uploaded_file,current_user],
                         outputs=[
                             status_output,
                             report_output,
