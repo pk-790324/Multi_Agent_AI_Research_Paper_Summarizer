@@ -2,34 +2,43 @@ from state.state import ResearchPaperState
 from services.parser_service import ParserService
 
 
+
 def parser_node(state: ResearchPaperState) -> ResearchPaperState:
-    """
-    Parse the saved document and update the graph state.
-    """
 
     print("=" * 60)
     print("PARSER NODE")
     print("=" * 60)
 
-    file_path = state["artifacts"]["file_path"]
+    artifacts = state.get("artifacts", {})
+    file_path = artifacts.get("file_path")
 
-    print(f"Parsing document: {file_path}")
+    if not file_path:
+        return {
+            **state,
+            "error": "Uploaded file path is missing."
+        }
 
     try:
-        markdown_path = ParserService.parse_pdf(file_path)
+        ingestion_id = artifacts.get("document_id")
 
-        print(f"Markdown saved to: {markdown_path}")
+        markdown_path = ParserService.parse_pdf(
+            pdf_path=file_path,
+            ingestion_id=artifacts["ingestion_id"]
+        )
+
+        print(f"Markdown saved: {markdown_path}")
 
         return {
             **state,
             "artifacts": {
-                **state["artifacts"],
+                **artifacts,
                 "markdown_path": markdown_path,
+                "ingestion_id": ingestion_id,
             },
             "error": "",
         }
 
-    except (ValueError, FileNotFoundError, OSError) as exc:
+    except Exception as exc:
         print(f"Parsing failed: {exc}")
 
         return {

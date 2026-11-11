@@ -13,6 +13,12 @@ from nodes.parser_node import parser_node
 from nodes.chunking_node import chunking_node
 from nodes.embedding_node import embedding_node
 
+from nodes.metadata_node import metadata_node
+from nodes.document_registration_node import (
+    document_registration_node
+)
+
+
 
 builder = StateGraph(ResearchPaperState)
 
@@ -58,6 +64,18 @@ builder.add_node("chunking", with_status("Chunking", chunking_node))
 builder.add_node("embedding", with_status("Embeddings", embedding_node))
 
 
+builder.add_node(
+    "metadata",
+    with_status("Metadata Extraction", metadata_node)
+)
+
+builder.add_node(
+    "document_registration",
+    with_status(
+        "Document Registration",
+        document_registration_node
+    )
+)
 
 
 # Conditional routing after upload
@@ -72,11 +90,19 @@ def route_after_upload(state: ResearchPaperState):
     return "continue"
 
 
+def route_after_stage(state):
+
+    if state.get("error"):
+        return "stop"
+
+    return "continue"
+
 # ------------------------
 # Build Workflow
 # ------------------------
 
 builder.add_edge(START, "upload")
+
 builder.add_conditional_edges(
     "upload",
     route_after_upload,
@@ -85,10 +111,44 @@ builder.add_conditional_edges(
         "stop": END
     }
 )
-builder.add_edge("parser", "chunking")
-builder.add_edge("chunking", "embedding")
-builder.add_edge("embedding", END)
 
+builder.add_conditional_edges(
+    "parser",
+    route_after_stage,
+    {
+        "continue": "metadata",
+        "stop": END
+    }
+)
+
+builder.add_conditional_edges(
+    "metadata",
+    route_after_stage,
+    {
+        "continue": "document_registration",
+        "stop": END
+    }
+)
+
+builder.add_conditional_edges(
+    "document_registration",
+    route_after_stage,
+    {
+        "continue": "chunking",
+        "stop": END
+    }
+)
+
+builder.add_conditional_edges(
+    "chunking",
+    route_after_stage,
+    {
+        "continue": "embedding",
+        "stop": END
+    }
+)
+
+builder.add_edge("embedding", END)
 # ------------------------
 # Compile Graph
 # ------------------------

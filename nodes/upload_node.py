@@ -1,4 +1,6 @@
 
+import uuid
+
 from state.state import ResearchPaperState
 
 from services.pdf_service import PDFService
@@ -25,11 +27,10 @@ def upload_node(state: ResearchPaperState) -> ResearchPaperState:
         }
 
     document_service = None
-    document_id = None
 
     try:
 
-        # Step 1: Validate file and calculate SHA-256.
+        # 1. Validate file and calculate SHA-256.
         metadata = PDFService.inspect_uploaded_document(
             uploaded_path
         )
@@ -37,72 +38,53 @@ def upload_node(state: ResearchPaperState) -> ResearchPaperState:
         print(f"Filename: {metadata['original_filename']}")
         print(f"SHA-256: {metadata['file_hash']}")
 
-        # Step 2: Connect to document registry.
-        document_service = DocumentManagementService()
-
-        # Temporary single-user identity.
-        # Later, replace with authenticated backend user ID.
+        # 2. Get authenticated user.
         owner_id = state.get("user_id")
+
         if not owner_id:
             raise ValueError(
-                "Authenticated user ID is missing from ingestion state."
+                "Authenticated user ID is missing."
             )
 
-        # Step 3: Register document and check duplicate.
-        registration = document_service.register_document(
-            metadata=metadata,
+        # 3. Connect to MongoDB.
+        document_service = DocumentManagementService()
+
+        # 4. Check exact file duplicate.
+        duplicate = document_service.find_duplicate_version(
+            file_hash=metadata["file_hash"],
             owner_id=owner_id
         )
 
-        document_id = registration["document_id"]
+        if duplicate:
 
-        # Step 4: Stop if document already exists.
-        if registration["is_duplicate"]:
-
-            print("Duplicate document detected!")
-
-            print(
-                f"Existing document ID: {document_id}"
-            )
+            print("Exact duplicate detected!")
 
             return {
                 **state,
-
                 "is_duplicate": True,
-
                 "artifacts": {
                     **state.get("artifacts", {}),
                     **metadata,
-                    "document_id": document_id,
-                    "duplicate_status": registration["status"],
-                    "duplicate_filename": registration[
-                        "original_filename"
-                    ]
+                    **duplicate,
+                    "owner_id": owner_id,
                 },
-
-                "error": ""
+                "error": "",
             }
 
-        # Step 5: Save the new document.
+        # 5. Generate unique ingestion ID.
+        ingestion_id = str(uuid.uuid4())
+
+        # 6. Save PDF using ingestion ID.
         saved_info = PDFService.save_uploaded_document(
             file_path=uploaded_path,
-            document_id=document_id,
+            document_id=ingestion_id,
             extension=metadata["file_extension"]
         )
 
-        # Step 6: Update MongoDB status.
-        document_service.update_status(
-            document_id=document_id,
-            status="uploaded",
-            extra_fields={
-                "file_name": saved_info["file_name"],
-                "file_path": saved_info["file_path"]
-            }
-        )
+        print(f"PDF saved: {saved_info['file_path']}")
+        print(f"Ingestion ID: {ingestion_id}")
 
-        print(f"Document saved: {saved_info['file_path']}")
-        print(f"Document ID: {document_id}")
-
+        # 7. Update graph state.
         return {
             **state,
 
@@ -112,31 +94,17 @@ def upload_node(state: ResearchPaperState) -> ResearchPaperState:
                 **state.get("artifacts", {}),
                 **metadata,
                 **saved_info,
-                "document_id": document_id,
-                "owner_id": owner_id
+
+                "ingestion_id": ingestion_id,
+                "owner_id": owner_id,
             },
 
-            "error": ""
+            "error": "",
         }
 
     except Exception as exc:
 
         print(f"Upload failed: {exc}")
-
-        # Mark failed registrations so they can be
-        # identified and recovered in a later stage.
-        if document_service and document_id:
-            try:
-                document_service.update_status(
-                    document_id=document_id,
-                    status="failed",
-                    error=str(exc)
-                )
-            except Exception as status_error:
-                print(
-                    f"Could not update failure status: "
-                    f"{status_error}"
-                )
 
         return {
             **state,

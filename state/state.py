@@ -10,6 +10,11 @@ class ResearchPaperState(TypedDict, total=False):
     # New document management fields
     is_duplicate: bool
     user_id: Optional[str]
+    document_id: str
+    owner_id: str
+    version: int
+    ingestion_id: str
+    is_duplicate: bool
 
 from typing import TypedDict, Optional
 

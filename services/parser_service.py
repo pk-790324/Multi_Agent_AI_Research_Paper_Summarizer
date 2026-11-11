@@ -14,14 +14,22 @@ torch._dynamo.disable()
 if hasattr(torch, "compile"):
     torch.compile = lambda model, *args, **kwargs: model
 
+
+
+
 from pathlib import Path
 from docling.document_converter import DocumentConverter
+import uuid
 
 
 class ParserService:
 
     @staticmethod
-    def parse_pdf(pdf_path: str) -> str:
+    def parse_pdf(
+        pdf_path: str,
+        ingestion_id: str = None
+    ) -> str:
+
         pdf_path = Path(pdf_path)
 
         if not pdf_path.is_file():
@@ -33,15 +41,20 @@ class ParserService:
         result = converter.convert(pdf_path)
 
         markdown_content = result.document.export_to_markdown(
-    page_break_placeholder="\n<!-- PAGE_BREAK -->\n"
-)
+            page_break_placeholder="\n<!-- PAGE_BREAK -->\n"
+        )
 
         output_dir = Path("parsed_papers")
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        markdown_path = output_dir / f"{pdf_path.stem}.md"
+        # Each ingestion gets its own artifact.
+        ingestion_id = ingestion_id or str(uuid.uuid4())
+
+        markdown_path = output_dir / f"{ingestion_id}.md"
+
         markdown_path.write_text(
-        markdown_content,
-    encoding="utf-8"
-)
+            markdown_content,
+            encoding="utf-8"
+        )
+
         return str(markdown_path)

@@ -24,13 +24,61 @@ def normalize_paper_slug(title: str) -> str:
 
 
 class EmbeddingService:
+    
+    @staticmethod
+    def create_payload_indexes(
+        client: QdrantClient,
+        collection_name: str,
+    ) -> None:
+        """
+        Create payload indexes required for metadata filtering.
+        """
+
+        payload_indexes = {
+            "section": models.PayloadSchemaType.KEYWORD,
+            "paper_title": models.PayloadSchemaType.KEYWORD,
+            "paper_slug": models.PayloadSchemaType.KEYWORD,
+            "source_file": models.PayloadSchemaType.KEYWORD,
+
+            # Document ownership and version management
+            "document_id": models.PayloadSchemaType.KEYWORD,
+            "owner_id": models.PayloadSchemaType.KEYWORD,
+
+            "version": models.PayloadSchemaType.INTEGER,
+
+            # Chunk and page metadata
+            "chunk_id": models.PayloadSchemaType.INTEGER,
+            "page_start": models.PayloadSchemaType.INTEGER,
+            "page_end": models.PayloadSchemaType.INTEGER,
+        }
+
+        for field_name, field_type in payload_indexes.items():
+
+            try:
+                client.create_payload_index(
+                    collection_name=collection_name,
+                    field_name=field_name,
+                    field_schema=field_type,
+                    wait=True,
+                )
+
+                print(f"Payload index created/verified: {field_name}")
+
+            except Exception as exc:
+                print(
+                    f"Payload index check failed for "
+                    f"{field_name}: {exc}"
+                )
 
     @staticmethod
     def index_chunks(
         chunk_file: str,
+        document_id: str,
+        owner_id: str,
+        version: int,
+        ingestion_id: str,
         collection_name: str = "research_papers",
-        batch_size: int = 16,
-    ) -> dict:
+        batch_size: int = 16,) -> dict:
         """
         Generate dense and sparse embeddings for each chunk
         and upload both vectors to an existing Qdrant collection.
@@ -132,115 +180,137 @@ class EmbeddingService:
         # 6. Create metadata indexes
         # -----------------------------------------
 
-        for field_name in [
-            "section",
-            "paper_title",
-            "page_number",
-            "paper_slug",
-            "chunk_id",
-        ]:
-            try:
-                client.create_payload_index(
-                    collection_name=collection_name,
-                    field_name=field_name,
-                    field_schema="keyword",
-                    wait=True,
-                )
-            except Exception:
-                # An index may already exist.
-                pass
+        EmbeddingService.create_payload_indexes(
+            
+            client=client,
+            collection_name=collection_name,)
 
         # -----------------------------------------
         # 7. Generate and upload vectors in batches
         # -----------------------------------------
 
+
+
         total_chunks = len(chunks)
         indexed_chunks = 0
         vector_dimension = None
 
-        for start in range(0, total_chunks, batch_size):
+        try:
 
-            batch = chunks[start:start + batch_size]
+            for start in range(0, total_chunks, batch_size):
 
-            texts = [chunk["text"] for chunk in batch]
+                batch = chunks[start:start + batch_size]
 
-            # Dense embeddings for all texts in this batch
-            dense_vectors = dense_model.embed_documents(texts)
+                texts = [chunk["text"] for chunk in batch]
 
-            # Sparse embeddings for all texts in this batch
-            sparse_vectors = list(sparse_model.embed(texts))
+                # Generate dense embeddings
+                dense_vectors = dense_model.embed_documents(texts)
 
-            if len(dense_vectors) != len(batch):
-                raise ValueError("Dense embedding count mismatch.")
+                # Generate sparse embeddings
+                sparse_vectors = list(sparse_model.embed(texts))
 
-            if len(sparse_vectors) != len(batch):
-                raise ValueError("Sparse embedding count mismatch.")
+                if len(dense_vectors) != len(batch):
+                    raise ValueError("Dense embedding count mismatch.")
 
-            points = []
+                if len(sparse_vectors) != len(batch):
+                    raise ValueError("Sparse embedding count mismatch.")
 
-            for chunk, dense, sparse in zip(
-                batch, dense_vectors, sparse_vectors
-            ):
+                points = []
 
-                if len(dense) != 1024:
-                    raise ValueError(
-                        f"Expected 1024 dense dimensions, got {len(dense)}."
+                for chunk, dense, sparse in zip(
+                    batch, dense_vectors, sparse_vectors
+                ):
+
+                    if len(dense) != 1024:
+                        raise ValueError(
+                            f"Expected 1024 dimensions, got {len(dense)}."
+                        )
+
+                    vector_dimension = len(dense)
+
+                    paper_title = chunk.get("paper_title", "")
+                    paper_slug = normalize_paper_slug(paper_title)
+
+                    payload = {
+                        "page_content": chunk["text"],
+
+                        # Document identity
+                        "document_id": document_id,
+                        "owner_id": owner_id,
+                        "version": version,
+
+                        # Paper metadata
+                        "paper_title": paper_title,
+                        "paper_slug": paper_slug,
+                        "source_file": chunk.get("source_file", ""),
+
+                        # Section and chunk metadata
+                        "section": chunk.get("section", ""),
+                        "chunk_id": chunk.get("chunk_id"),
+                        "page_start": chunk.get("page_start"),
+                        "page_end": chunk.get("page_end"),
+
+                        # Additional metadata
+                        "char_count": chunk.get(
+                            "char_count", len(chunk["text"])
+                        ),
+                        "created_at": chunk.get("created_at", ""),
+                    }
+
+                    point = models.PointStruct(
+                        id=str(uuid.uuid4()),
+                        vector={
+                            "dense": dense,
+                            "sparse": models.SparseVector(
+                                indices=sparse.indices.tolist(),
+                                values=sparse.values.tolist(),
+                            ),
+                        },
+                        payload=payload,
                     )
 
-                vector_dimension = len(dense)
+                    points.append(point)
 
-                paper_title = chunk.get("paper_title", "")
-                paper_slug = normalize_paper_slug(paper_title)
-
-                # ---------------------------------
-                # 8. Flat metadata payload
-                # ---------------------------------
-
-                payload = {
-                    "page_content": chunk["text"],
-                    "paper_title": paper_title,
-                    "page_start": chunk.get("page_start"),
-                    "page_end": chunk.get("page_end"),
-                    "paper_slug": paper_slug,
-                    "section": chunk.get("section", ""),
-                    "chunk_id": chunk.get("chunk_id"),
-                    "char_count": chunk.get(
-                        "char_count", len(chunk["text"])
-                    ),
-                    "source_file": chunk.get("source_file", ""),
-                    "created_at": chunk.get("created_at", ""),
-                }
-
-                # ---------------------------------
-                # 9. Store dense + sparse vectors
-                # ---------------------------------
-
-                point = models.PointStruct(
-                    id=str(uuid.uuid4()),
-                    vector={
-                        "dense": dense,
-                        "sparse": models.SparseVector(
-                            indices=sparse.indices.tolist(),
-                            values=sparse.values.tolist(),
-                        ),
-                    },
-                    payload=payload,
+                # Upload batch
+                client.upsert(
+                    collection_name=collection_name,
+                    points=points,
+                    wait=True,
                 )
 
-                points.append(point)
+                indexed_chunks += len(points)
 
-            # Upload the current batch
-            client.upsert(
-                collection_name=collection_name,
-                points=points,
-                wait=True,
-            )
+                print(
+                    f"Indexed {indexed_chunks}/{total_chunks} chunks"
+                )
+                verification = EmbeddingService.verify_version(
+                    document_id=document_id,
+                    owner_id=owner_id,
+                    version=version,
+                    expected_chunks=indexed_chunks,
+                    collection_name=collection_name,
+                )
 
-            indexed_chunks += len(points)
+                if not verification["verified"]:
+                    raise RuntimeError(
+                        f"Qdrant verification failed: {verification}"
+                    )
+
+        except Exception:
 
             print(
-                f"Indexed {indexed_chunks}/{total_chunks} chunks"
+                f"Indexing failed for document {document_id}, "
+                f"version {version}. Cleaning partial Qdrant points."
             )
+
+            EmbeddingService.cleanup_failed_version(
+                document_id=document_id,
+                owner_id=owner_id,
+                version=version,
+                collection_name=collection_name,
+            )
+
+            raise
 
         # -----------------------------------------
         # 10. Verify final point count
@@ -259,9 +329,199 @@ class EmbeddingService:
             "vector_names": ["dense", "sparse"],
             "vector_dimension": vector_dimension,
             "indexed_chunks": indexed_chunks,
+            "verified_chunks": indexed_chunks,
             "points_in_collection": final_count,
         }
 
+    @staticmethod
+    def _get_qdrant_client():
 
+        qdrant_url = os.getenv("QDRANT_URL")
+        qdrant_api_key = os.getenv("QDRANT_API_KEY")
 
+        if not qdrant_url or not qdrant_api_key:
+            raise ValueError(
+                "Qdrant credentials are missing."
+            )
+
+        return QdrantClient(
+            url=qdrant_url,
+            api_key=qdrant_api_key,
+        )
+
+    @staticmethod
+    def build_version_filter(
+        document_id: str,
+        owner_id: str,
+        version: int,
+    ):
+
+        return models.Filter(
+            must=[
+                models.FieldCondition(
+                    key="document_id",
+                    match=models.MatchValue(
+                        value=document_id
+                    ),
+                ),
+                models.FieldCondition(
+                    key="owner_id",
+                    match=models.MatchValue(
+                        value=owner_id
+                    ),
+                ),
+                models.FieldCondition(
+                    key="version",
+                    match=models.MatchValue(
+                        value=version
+                    ),
+                ),
+            ]
+        )
+
+    @staticmethod
+    def verify_version(
+        document_id: str,
+        owner_id: str,
+        version: int,
+        expected_chunks: int,
+        collection_name: str = "research_papers",
+    ) -> dict:
+
+        client = EmbeddingService._get_qdrant_client()
+
+        try:
+
+            version_filter = (
+                EmbeddingService.build_version_filter(
+                    document_id,
+                    owner_id,
+                    version,
+                )
+            )
+
+            result = client.count(
+                collection_name=collection_name,
+                count_filter=version_filter,
+                exact=True,
+            )
+
+            actual_chunks = result.count
+
+            return {
+                "verified": actual_chunks == expected_chunks,
+                "expected_chunks": expected_chunks,
+                "actual_chunks": actual_chunks,
+            }
+
+        finally:
+            client.close()
+
+    @staticmethod
+    def delete_version(
+        document_id: str,
+        owner_id: str,
+        version: int,
+        collection_name: str = "research_papers",
+    ) -> dict:
+
+        client = EmbeddingService._get_qdrant_client()
+
+        try:
+
+            version_filter = (
+                EmbeddingService.build_version_filter(
+                    document_id,
+                    owner_id,
+                    version,
+                )
+            )
+
+            # Delete only the specified document version.
+            client.delete(
+                collection_name=collection_name,
+                points_selector=models.FilterSelector(
+                    filter=version_filter
+                ),
+                wait=True,
+            )
+
+            remaining = client.count(
+                collection_name=collection_name,
+                count_filter=version_filter,
+                exact=True,
+            ).count
+
+            if remaining != 0:
+                raise RuntimeError(
+                    f"Version deletion incomplete: "
+                    f"{remaining} points remain."
+                )
+
+            return {
+                "status": "deleted",
+                "document_id": document_id,
+                "version": version,
+                "remaining_points": remaining,
+            }
+
+        finally:
+            client.close()
+
+    @staticmethod
+    def cleanup_failed_version(
+        document_id: str,
+        owner_id: str,
+        version: int,
+        collection_name: str = "research_papers",
+    ):
+
+        return EmbeddingService.delete_version(
+            document_id=document_id,
+            owner_id=owner_id,
+            version=version,
+            collection_name=collection_name,
+        )
+
+    @staticmethod
+    def build_active_versions_filter(
+        owner_id: str,
+        active_documents: list[dict],
+    ):
+
+        conditions = []
+
+        for document in active_documents:
+
+            conditions.append(
+                models.Filter(
+                    must=[
+                        models.FieldCondition(
+                            key="document_id",
+                            match=models.MatchValue(
+                                value=document["document_id"]
+                            ),
+                        ),
+                        models.FieldCondition(
+                            key="version",
+                            match=models.MatchValue(
+                                value=document["active_version"]
+                            ),
+                        ),
+                    ]
+                )
+            )
+
+        if not conditions:
+            return None
+
+        return models.Filter(
+            must=[
+                models.FieldCondition(
+                    key="owner_id",
+                    match=models.MatchValue(value=owner_id),
+                )
+            ],
+            should=conditions,
+        )
 
