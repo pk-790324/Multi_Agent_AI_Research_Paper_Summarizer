@@ -842,9 +842,66 @@ CSS = """
     font-family: monospace !important;
 }
 
+#auth-page {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: calc(100vh - 40px);
+    padding: 24px;
+    border-radius: 24px;
+    background:
+        radial-gradient(ellipse at 15% 15%, rgba(147, 197, 253, 0.3), transparent 38%),
+        radial-gradient(ellipse at 85% 85%, rgba(196, 181, 253, 0.28), transparent 40%),
+        linear-gradient(135deg, #f8fafc, #eff6ff);
+}
+
+#auth-page.hide {
+    display: none !important;
+}
+
+#auth-card {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 480px;
+    margin: auto;
+    padding: 36px;
+    border: 1px solid rgba(148, 163, 184, 0.3);
+    border-radius: 24px;
+    background: rgba(255, 255, 255, 0.94);
+    box-shadow: 0 24px 64px rgba(30, 64, 175, 0.14);
+}
+
+#auth-card input,
+#auth-card textarea {
+    border-radius: 12px;
+}
+
+#auth-card button.primary {
+    border: 0;
+    background: linear-gradient(110deg, #2563eb, #7c3aed);
+    color: #ffffff;
+}
+
+#auth-card button.primary:hover {
+    background: linear-gradient(110deg, #1d4ed8, #6d28d9);
+}
+
+#auth-card [role="tab"] {
+    font-weight: 600;
+}
+
 @media (max-width: 800px) {
     .gradio-container {
         padding: 12px !important;
+    }
+
+    #auth-page {
+        min-height: calc(100vh - 24px);
+        padding: 12px;
+    }
+
+    #auth-card {
+        padding: 28px 22px;
     }
 
     .gradio-container .row {
@@ -883,51 +940,52 @@ with gr.Blocks(
     # =========================
     #  AUTH PAGE
     # =========================
-    with gr.Column(visible=True) as auth_page:
-        gr.Markdown("# Research Paper Summarizer")
-        gr.Markdown("Please sign in to access your dashboard.")
+    with gr.Column(visible=True, elem_id="auth-page") as auth_page:
+        with gr.Column(elem_id="auth-card"):
+            gr.Markdown("# 📚 Research Paper Summarizer")
+            gr.Markdown("Sign in or create an account to continue to your research workspace.")
 
-        with gr.Tabs():
+            with gr.Tabs() as auth_tabs:
 
-            # SIGNUP TAB
-            with gr.Tab("Sign Up"):
+                # SIGNUP TAB
+                with gr.Tab("Sign Up"):
 
-                signup_name = gr.Textbox(
-                    label="Full Name"
-                )
+                    signup_name = gr.Textbox(
+                        label="Full Name"
+                    )
 
-                signup_email = gr.Textbox(
-                    label="Email"
-                )
+                    signup_email = gr.Textbox(
+                        label="Email"
+                    )
 
-                signup_password = gr.Textbox(
-                    label="Password",
-                    type="password"
-                )
+                    signup_password = gr.Textbox(
+                        label="Password",
+                        type="password"
+                    )
 
-                signup_button = gr.Button(
-                    "Create Account",
-                    variant="primary"
-                )
+                    signup_button = gr.Button(
+                        "Create Account",
+                        variant="primary"
+                    )
 
-            # LOGIN TAB
-            with gr.Tab("Login"):
+                # LOGIN TAB
+                with gr.Tab("Login", id=1):
 
-                login_email = gr.Textbox(
-                    label="Email"
-                )
+                    login_email = gr.Textbox(
+                        label="Email"
+                    )
 
-                login_password = gr.Textbox(
-                    label="Password",
-                    type="password"
-                )
+                    login_password = gr.Textbox(
+                        label="Password",
+                        type="password"
+                    )
 
-                login_button = gr.Button(
-                    "Login",
-                    variant="primary"
-                )
+                    login_button = gr.Button(
+                        "Login",
+                        variant="primary"
+                    )
 
-        auth_status = gr.Markdown()
+            auth_status = gr.Markdown()
     with gr.Column(visible=False) as protected_app:
         gr.Markdown(
             "# 🧠 Research Paper AI Assistant\n"
@@ -982,10 +1040,7 @@ with gr.Blocks(
                     "⚙️  Settings",
                 )
                 
-                auth_btn=gr.Button(
-                    "Authentication",
-                    
-                )
+               
                 
                 # Add logout button
 
@@ -1595,7 +1650,7 @@ with gr.Blocks(
             signup_email,
             signup_password
         ],
-        outputs=auth_status
+        outputs=[auth_status, auth_tabs]
     )
 
     login_button.click(

@@ -5,7 +5,7 @@ import gradio as gr
 def signup_user(name, email, password):
 
     if not name or not email or not password:
-        return "Please fill in all fields."
+        return "Please fill in all fields.", gr.update()
 
     success, message = signup_api(
         name,
@@ -13,7 +13,7 @@ def signup_user(name, email, password):
         password
     )
 
-    return message
+    return message, gr.update(selected=1) if success else gr.update()
 
 
 def login_user(email, password):
