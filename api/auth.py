@@ -4,6 +4,7 @@ from pymongo.errors import DuplicateKeyError
 from database.database import user_collection
 from database.schemas import UserCreate, UserLogin, UserResponse
 from database.models import hash_password, verify_password
+from api.auth_utils import create_access_token
 
 router = APIRouter(
     prefix="/auth",
@@ -57,10 +58,11 @@ def signup(user: UserCreate):
 
 
 # LOGIN ENDPOINT
+
 @router.post("/login")
 def login(user: UserLogin):
 
-    # Find user by email
+    # 1. Find user
     existing_user = user_collection.find_one(
         {"email": user.email}
     )
@@ -71,7 +73,7 @@ def login(user: UserLogin):
             detail="Invalid email or password"
         )
 
-    # Verify password
+    # 2. Verify password
     is_valid = verify_password(
         user.password,
         existing_user["password_hash"]
@@ -83,10 +85,18 @@ def login(user: UserLogin):
             detail="Invalid email or password"
         )
 
+    # 3. Generate JWT
+    user_id = str(existing_user["_id"])
+
+    access_token = create_access_token(user_id)
+
+    # 4. Return token and user details
     return {
         "message": "Login successful",
+        "access_token": access_token,
+        "token_type": "bearer",
         "user": {
-            "id": str(existing_user["_id"]),
+            "id": user_id,
             "name": existing_user["name"],
             "email": existing_user["email"]
         }

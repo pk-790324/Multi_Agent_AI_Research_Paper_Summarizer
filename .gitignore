@@ -6,6 +6,11 @@ __pycache__/
 # C extensions
 *.so
 
+
+.chunks
+.data/uploaded_papers
+.parsed_papers
+
 # Distribution / packaging
 .Python
 build/

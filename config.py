@@ -33,7 +33,7 @@ CHUNK_PREVIEW_LIMIT = 20
 # config for multi agent 
 #===========================================
 
-MAX_AGENT_ATTEMPTS = 5
+MAX_AGENT_ATTEMPTS = 3
 
 AGENT_NAMES = [
     "Orchestrator",

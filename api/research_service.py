@@ -42,7 +42,7 @@ def format_retrieved_chunks(chunks):
     return markdown
 
 
-def run_research_pipeline(user_query: str):
+def run_research_pipeline(user_query: str,user_id: str,):
 
     agent_counts = {
         name: 0 for name in AGENT_NAMES
@@ -55,6 +55,7 @@ def run_research_pipeline(user_query: str):
     execution_logs = []
 
     final_state = {
+        "user_id": user_id,
         "user_query": user_query.strip(),
         "retrieved_chunks": [],
         "retrieval_count": 0,

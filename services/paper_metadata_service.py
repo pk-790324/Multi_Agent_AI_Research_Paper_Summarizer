@@ -31,7 +31,7 @@ class PaperMetadataService:
         if doi_match:
             doi = doi_match.group(0).rstrip(".,;:)]}")
 
-        # The parser may export the document title as a heading other than H1.
+        # Extract paper title from any Markdown heading (H1-H6).
         title_match = re.search(
             r"^\s{0,3}#{1,6}\s+(.+?)\s*$",
             content,
@@ -47,12 +47,6 @@ class PaperMetadataService:
             if title_match
             else None
         )
-
-        if not paper_title:
-            raise ValueError(
-                "Could not extract a paper title. "
-                "Please check the parsed Markdown."
-            )
 
         return {
             "paper_title": paper_title,

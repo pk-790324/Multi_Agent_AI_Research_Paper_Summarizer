@@ -234,12 +234,31 @@ import json
 RESEARCH_API_URL = "http://127.0.0.1:8001/research/run"
 
 
-def run_research_pipeline(user_query: str):
+def run_research_pipeline(user_query: str, current_user):
 
     if not user_query or not user_query.strip():
 
         yield (
             "Please enter a research question.",
+            "",
+            "### No research chunks retrieved.",
+            "",
+            "",
+            "",
+            [],
+            [],
+            "Pipeline Progress: 0/6 agents completed"
+        )
+        return
+
+    access_token = (
+        current_user.get("access_token")
+        if current_user
+        else None
+    )
+    if not access_token:
+        yield (
+            "Please log in again to continue.",
             "",
             "### No research chunks retrieved.",
             "",
@@ -257,7 +276,10 @@ def run_research_pipeline(user_query: str):
         with requests.post(
             RESEARCH_API_URL,
             json={"user_query": user_query.strip()},
-            headers={"Accept": "text/event-stream"},
+            headers={
+                "Authorization": f"Bearer {access_token}",
+                "Accept": "text/event-stream",
+            },
             stream=True,
             timeout=(10, None)
         ) as response:
@@ -1336,7 +1358,7 @@ with gr.Blocks(
 
                     run_button.click(
                     fn=run_research_pipeline,
-                    inputs=[query_input],
+                    inputs=[query_input, current_user],
                     outputs=[
                         pipeline_status,
                         final_answer,

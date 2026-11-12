@@ -45,16 +45,20 @@ class HybridSearchService:
             "cross-encoder/ms-marco-MiniLM-L-6-v2"
         )
 
+    
     def search(
-        self,
-        query: str,
-        top_k: int = 5,
-        candidate_k: int = 20,
-        paper_slug: str | None = None,
-    ) -> list[dict]:
-
+    self,
+    query: str,
+    user_id: str,
+    top_k: int = 5,
+    candidate_k: int = 20,
+    paper_slug: str | None = None,
+) -> list[dict]:
         if not query.strip():
             raise ValueError("Query cannot be empty.")
+
+        if not user_id or not user_id.strip():
+            raise ValueError("Authenticated user_id is required.")
 
         if top_k < 1 or candidate_k < top_k:
             raise ValueError(
@@ -74,20 +78,28 @@ class HybridSearchService:
             values=sparse_vector.values.tolist(),
         )
 
-        # 3. Optional metadata filter
-        query_filter = None
+        # 3. Mandatory user filter
+        must_conditions = [
+            models.FieldCondition(
+                key="owner_id",
+                match=models.MatchValue(value=user_id.strip()),
+            )
+        ]
 
+        # 4. Optional paper filter
         if paper_slug:
-            query_filter = models.Filter(
-                must=[
-                    models.FieldCondition(
-                        key="paper_slug",
-                        match=models.MatchValue(value=paper_slug),
-                    )
-                ]
+            must_conditions.append(
+                models.FieldCondition(
+                    key="paper_slug",
+                    match=models.MatchValue(value=paper_slug),
+                )
             )
 
-        # 4. Dense + sparse candidate retrieval, then RRF
+        query_filter = models.Filter(
+            must=must_conditions
+        )
+
+        # 5. Dense + Sparse retrieval with RRF
         response = self.client.query_points(
             collection_name=self.collection_name,
             prefetch=[
@@ -113,7 +125,7 @@ class HybridSearchService:
             with_vectors=False,
         )
 
-        # 5. Cross-Encoder reranking
+        # 6. Cross-Encoder reranking
         candidates = response.points
 
         reranker_inputs = [
@@ -128,14 +140,13 @@ class HybridSearchService:
             reranker_inputs
         )
 
-        # Sort candidates by Cross-Encoder relevance score
         reranked_candidates = sorted(
             zip(candidates, reranker_scores),
             key=lambda item: item[1],
             reverse=True
         )
 
-        # 6. Return top_k reranked results
+        # 7. Return top-k results
         results = []
 
         for rank, (point, rerank_score) in enumerate(

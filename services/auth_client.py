@@ -44,8 +44,14 @@ def login_api(email, password):
 
         if response.status_code == 200:
             data = response.json()
+            user = data.get("user")
+            access_token = data.get("access_token")
 
-            return True, data.get("user"), "Login successful!"
+            if not isinstance(user, dict) or not access_token:
+                return False, None, "Login response did not include an authentication token."
+
+            user["access_token"] = access_token
+            return True, user, "Login successful!"
 
         error = response.json().get(
             "detail",

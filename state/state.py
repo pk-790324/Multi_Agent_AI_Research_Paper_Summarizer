@@ -29,6 +29,7 @@ class ResearchState(TypedDict, total=False):
     # USER INPUT
     # ========================================================
 
+    user_id: str
     user_query: str
 
     # ========================================================
@@ -41,11 +42,10 @@ class ResearchState(TypedDict, total=False):
     retrieval_feedback: str
     analyst_attempts: int
     review_limit_reached: bool
-    
+
     # RETRIEVAL STATUS
     retrieval_status: str
     retrieval_error: Optional[str]
-
 
     # ========================================================
     # AGENT OUTPUTS
@@ -55,14 +55,13 @@ class ResearchState(TypedDict, total=False):
     critique: str
     critical_analysis: str
     analyst_feedback: str
-    # In ResearchState
+
     critic_attempts: int
     max_critic_attempts: int
     critic_verdict: str
     cited_analysis: str
     citations: list[dict[str, Any]]
-    
-    
+
     # CITATION STATUS
     citation_status: str
     citation_error: Optional[str]

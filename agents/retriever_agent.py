@@ -8,8 +8,11 @@ hybrid_search = HybridSearchService()
 
 def retriever_agent(state):
     """
-    Retrieve relevant research-paper chunks using
-    hybrid search (Dense + Sparse + RRF).
+    Retrieve relevant research-paper chunks belonging
+    only to the authenticated user.
+
+    Hybrid search:
+    Dense + Sparse + RRF + Cross-Encoder.
     """
 
     print("\n" + "=" * 60)
@@ -20,7 +23,7 @@ def retriever_agent(state):
     # 1. GET USER QUERY
     # -------------------------------------------------
 
-    query = state.get("user_query", "").strip()
+    query = (state.get("user_query") or "").strip()
 
     if not query:
         return {
@@ -29,10 +32,27 @@ def retriever_agent(state):
             "retrieval_error": "User query is empty."
         }
 
-    print(f"\nUser Query: {query}")
+    # -------------------------------------------------
+    # 2. GET AUTHENTICATED USER ID
+    # -------------------------------------------------
+
+    user_id = state.get("user_id")
+
+    if not isinstance(user_id, str) or not user_id.strip():
+
+        return {
+            "retrieved_chunks": [],
+            "retrieval_status": "failed",
+            "retrieval_error": "Authenticated user_id is missing."
+        }
+
+    user_id = user_id.strip()
+
+    print(f"\nUser ID: {user_id}")
+    print(f"User Query: {query}")
 
     # -------------------------------------------------
-    # 2. HYBRID SEARCH CONFIGURATION
+    # 3. HYBRID SEARCH CONFIGURATION
     # -------------------------------------------------
 
     TOP_K = 5
@@ -42,15 +62,17 @@ def retriever_agent(state):
     print(f"Top K: {TOP_K}")
     print(f"Candidate K: {CANDIDATE_K}")
     print("Search Mode: Hybrid (Dense + Sparse + RRF)")
+    print("Document Filter: Authenticated User ID")
 
     # -------------------------------------------------
-    # 3. RETRIEVE RELEVANT CHUNKS
+    # 4. RETRIEVE USER-SPECIFIC CHUNKS
     # -------------------------------------------------
 
     try:
 
         chunks = hybrid_search.search(
             query=query,
+            user_id=user_id,
             top_k=TOP_K,
             candidate_k=CANDIDATE_K,
         )
@@ -66,12 +88,12 @@ def retriever_agent(state):
         }
 
     # -------------------------------------------------
-    # 4. CHECK RETRIEVAL RESULTS
+    # 5. CHECK RETRIEVAL RESULTS
     # -------------------------------------------------
 
     if not chunks:
 
-        print("\nNo relevant chunks found.")
+        print("\nNo relevant chunks found for this user.")
 
         return {
             "retrieved_chunks": [],
@@ -80,7 +102,7 @@ def retriever_agent(state):
         }
 
     # -------------------------------------------------
-    # 5. DISPLAY RETRIEVED CHUNKS
+    # 6. DISPLAY RETRIEVED CHUNKS
     # -------------------------------------------------
 
     print(f"\nRetrieved {len(chunks)} chunks successfully.")
@@ -99,7 +121,7 @@ def retriever_agent(state):
         print(chunk.get("page_content", "")[:300])
 
     # -------------------------------------------------
-    # 6. RETURN RESULTS TO LANGGRAPH STATE
+    # 7. RETURN RESULTS TO LANGGRAPH STATE
     # -------------------------------------------------
 
     return {
@@ -107,9 +129,6 @@ def retriever_agent(state):
         "retrieval_status": "success",
         "retrieval_error": None
     }
-
-
-
 
 
 

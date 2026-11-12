@@ -221,7 +221,9 @@ class DocumentManagementService:
         if not owner_id:
             raise ValueError("owner_id is required.")
 
-        paper_title = metadata.get("paper_title", "").strip()
+        paper_title = (metadata.get("paper_title") or "").strip()
+        if not paper_title:
+            paper_title = "Untitled Paper"
         doi = metadata.get("doi")
 
         identity_key = self.generate_identity_key(

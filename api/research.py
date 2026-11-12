@@ -6,7 +6,8 @@ from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 
 from api.research_service import run_research_pipeline
-
+from fastapi import APIRouter, HTTPException, Depends
+from api.auth_utils import get_current_user
 
 router = APIRouter(
     prefix="/research",
@@ -23,22 +24,30 @@ class ResearchRequest(BaseModel):
     )
 
 
+
 @router.post("/run")
-async def run_research(request: ResearchRequest):
+async def run_research(
+    request: ResearchRequest,
+    current_user: dict = Depends(get_current_user),
+):
 
     user_query = request.user_query.strip()
 
     if not user_query:
-        from fastapi import HTTPException
-
         raise HTTPException(
             status_code=400,
             detail="Research question cannot be empty."
         )
 
+    # Identity comes from validated authentication
+    user_id = str(current_user["_id"])
+
     def event_generator():
 
-        for event in run_research_pipeline(user_query):
+        for event in run_research_pipeline(
+            user_query=user_query,
+            user_id=user_id,
+        ):
 
             yield (
                 "data: "
@@ -56,3 +65,4 @@ async def run_research(request: ResearchRequest):
             "X-Accel-Buffering": "no",
         }
     )
+

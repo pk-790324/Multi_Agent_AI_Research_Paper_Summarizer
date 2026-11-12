@@ -35,3 +35,4 @@ pymongo
 pydantic[email]
 pwdlib[argon2]
 httpx
+python-jose[cryptography]
