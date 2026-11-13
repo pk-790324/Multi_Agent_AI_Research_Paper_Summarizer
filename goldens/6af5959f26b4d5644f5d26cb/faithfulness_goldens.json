@@ -1,0 +1,36 @@
+[
+  {
+    "id": "g001",
+    "owner_id": "6af5959f26b4d5644f5d26cb",
+    "query": "Why are 1.58-bit LLMs particularly suitable for deployment on edge and mobile devices compared to traditional LLMs?",
+    "ideal_context": "The use of 1.58-bit LLMs has the potential to greatly improve the performance of language models on edge and mobile devices. These devices are often limited by their memory and computational power, which can restrict the performance and the scale of LLMs. However, the reduced memory and energy consumption of 1.58-bit LLMs allows them to be deployed on these devices, enabling a wide range of applications that were previously not possible. This can greatly enhance the capabilities of edge and mobile devices and enable new and exciting applications of LLMs. Moreover, 1.58-bit LLMs are more friendly to CPU devices, which are the main processors used in edge and mobile devices. This means that BitNet b1.58 can be efficiently executed on these devices, further improving their performance and capabilities.",
+    "chunk_id": 15,
+    "document_id": "d96bd246-571a-47a3-a8d5-02212814cab0",
+    "version": 1,
+    "paper_title": "The Era of 1-bit LLMs: All Large Language Models are in 1.58 Bits",
+    "section": "LLMs on Edge and Mobile",
+    "page_start": 6,
+    "page_end": 6,
+    "source_file": "parsed_papers\\38690ffc-d71a-4c21-a9ac-05f9900612de.md",
+    "text": "The use of 1.58-bit LLMs has the potential to greatly improve the performance of language models on edge and mobile devices. These devices are often limited by their memory and computational power, which can restrict the performance and the scale of LLMs. However, the reduced memory and energy consumption of 1.58-bit LLMs allows them to be deployed on these devices, enabling a wide range of applications that were previously not possible. This can greatly enhance the capabilities of edge and mobile devices and enable new and exciting applications of LLMs. Moreover, 1.58-bit LLMs are more friendly to CPU devices, which are the main processors used in edge and mobile devices. This means that BitNet b1.58 can be efficiently executed on these devices, further improving their performance and capabilities.",
+    "char_count": 810,
+    "created_at": "2026-11-13T13:24:32.464733"
+  },
+  {
+    "id": "g002",
+    "owner_id": "6af5959f26b4d5644f5d26cb",
+    "query": "What is the difference between a metric and an objective in the context of machine learning as defined in the text?",
+    "ideal_context": "The following terms will come up repeatedly in our discussion of effective machine learning: Instance : The thing about which you want to make a prediction. For example, the instance might be a web page that you want to classify as either \"about cats\" or \"not about cats\". : An answer for a prediction task ­­ either the answer produced by a machine learning system, or the right answer supplied in training data. For example, the label for a web page Label might be \"about cats\". Feature : A property of an instance used in a prediction task. For example, a web page might have a feature \"contains the word 'cat'\". Feature Column : A set of related features, such as the set of all possible countries in which 1 users might live. An example may have one or more features present in a feature column. A feature column is referred to as a 'namespace' in the VW system (at Yahoo/Microsoft), or a field . Example : An instance (with its features) and a label. Model : A statistical representation of a prediction task. You train a model on examples then use the model to make predictions. Metric : A number that you care about. May or may not be directly optimized. Objective : A metric that your algorithm is trying to optimize. Pipeline : The infrastructure surrounding a machine learning algorithm. Includes gathering the data from the front end, putting it into training data files, training one or more models, and exporting the models to production.",
+    "chunk_id": 11,
+    "document_id": "95c5b82f-7ba0-4739-bda5-eda44403fd28",
+    "version": 1,
+    "paper_title": "Rules of Machine Learning: Best Practices for ML Engineering",
+    "section": "Terminology",
+    "page_start": 3,
+    "page_end": 3,
+    "source_file": "parsed_papers\\d01809d2-cd30-4669-b7bc-d7a3d9dabf54.md",
+    "text": "The following terms will come up repeatedly in our discussion of effective machine learning: Instance : The thing about which you want to make a prediction. For example, the instance might be a web page that you want to classify as either \"about cats\" or \"not about cats\". : An answer for a prediction task ­­ either the answer produced by a machine learning system, or the right answer supplied in training data. For example, the label for a web page Label might be \"about cats\". Feature : A property of an instance used in a prediction task. For example, a web page might have a feature \"contains the word 'cat'\". Feature Column : A set of related features, such as the set of all possible countries in which 1 users might live. An example may have one or more features present in a feature column. A feature column is referred to as a 'namespace' in the VW system (at Yahoo/Microsoft), or a field . Example : An instance (with its features) and a label. Model : A statistical representation of a prediction task. You train a model on examples then use the model to make predictions. Metric : A number that you care about. May or may not be directly optimized. Objective : A metric that your algorithm is trying to optimize. Pipeline : The infrastructure surrounding a machine learning algorithm. Includes gathering the data from the front end, putting it into training data files, training one or more models, and exporting the models to production.",
+    "char_count": 1452,
+    "created_at": "2026-11-13T12:58:07.788005"
+  }
+]

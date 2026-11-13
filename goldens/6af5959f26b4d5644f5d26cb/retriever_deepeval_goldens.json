@@ -1,0 +1,40 @@
+[
+  {
+    "id": "g001",
+    "query": "List all authors associated with https://aka.ms/GeneralAI, including Shuming Ma and Furu Wei.",
+    "ideal_answer": "The authors associated with https://aka.ms/GeneralAI are Shuming Ma, Hongyu Wang, Lingxiao Ma, Lei Wang, Wenhui Wang, Shaohan Huang, Li Dong, Ruiping Wang, Jilong Xue, and Furu Wei.",
+    "expected_retrieval_context": [
+      "Shuming Ma ∗ Hongyu Wang ∗ Lingxiao Ma Lei Wang Wenhui Wang Shaohan Huang Li Dong Ruiping Wang Jilong Xue Furu Wei ⋄ [https://aka.ms/GeneralAI](https://aka.ms/GeneralAI)"
+    ],
+    "source": {
+      "owner_id": "6af5959f26b4d5644f5d26cb",
+      "document_id": "d96bd246-571a-47a3-a8d5-02212814cab0",
+      "version": 1,
+      "chunk_id": 1,
+      "paper_title": "The Era of 1-bit LLMs: All Large Language Models are in 1.58 Bits",
+      "section": "The Era of 1-bit LLMs: All Large Language Models are in 1.58 Bits",
+      "page_start": 1,
+      "page_end": 1,
+      "source_file": "parsed_papers\\38690ffc-d71a-4c21-a9ac-05f9900612de.md"
+    }
+  },
+  {
+    "id": "g002",
+    "query": "Explain why sanity checks on held-out data must precede export to prevent user-facing issues.",
+    "ideal_answer": "Sanity checks on held-out data must precede export because issues with an exported model become user-facing, whereas issues occurring before export are merely training issues that users will not notice. Performing these checks ensures model performance is reasonable, allowing teams to address problems via email alerts rather than triggering urgent pages for user-facing failures.",
+    "expected_retrieval_context": [
+      "Many machine learning systems have a stage where you export the model to serving. If there is an issue with an exported model, it is a user­facing issue. If there is an issue before, then it is a training issue, and users will not notice. Do sanity checks right before you export the model. Specifically, make sure that the model's performance is reasonable on held out data. Or, if you have lingering concerns with the data, don't export a model. Many teams continuously deploying models check the area under the ROC curve (or AUC) before exporting. Issues about models that haven't been exported require an e­mail alert, but issues on a user­facing model may require a page. So better to wait and be sure before impacting users."
+    ],
+    "source": {
+      "owner_id": "6af5959f26b4d5644f5d26cb",
+      "document_id": "95c5b82f-7ba0-4739-bda5-eda44403fd28",
+      "version": 1,
+      "chunk_id": 27,
+      "paper_title": "Rules of Machine Learning: Best Practices for ML Engineering",
+      "section": "Rule   #9:   Detect   problems   before   exporting   models.",
+      "page_start": 8,
+      "page_end": 8,
+      "source_file": "parsed_papers\\d01809d2-cd30-4669-b7bc-d7a3d9dabf54.md"
+    }
+  }
+]

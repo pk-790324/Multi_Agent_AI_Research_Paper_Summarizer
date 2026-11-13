@@ -1,54 +1,99 @@
-from fastapi import APIRouter
-from pathlib import Path
+from fastapi import APIRouter, Depends
 
-from config import UPLOADED_DIR
+from api.auth_utils import get_current_user
+from services.document_management_service import DocumentManagementService
+
 
 router = APIRouter(
     prefix="/papers",
     tags=["Uploaded Papers"]
 )
 
+document_service = DocumentManagementService()
+
 
 @router.get("/uploaded")
-async def list_uploaded_papers():
-    """List all uploaded research papers."""
+def list_uploaded_papers(
+    current_user: dict = Depends(get_current_user)
+):
+    """List all uploaded papers with their active and inactive versions."""
 
-    if not UPLOADED_DIR.exists():
-        return {
-            "message": "No uploaded papers found yet.",
-            "total_files": 0,
-            "files": []
-        }
+    # 1. Get authenticated user's ID
+    owner_id = str(current_user["_id"])
 
-    files = sorted(
-        (
-            path for path in UPLOADED_DIR.iterdir()
-            if path.is_file()
-        ),
-        key=lambda path: path.stat().st_mtime,
-        reverse=True,
+    # 2. Fetch only this user's documents
+    documents = list(
+        document_service.documents.find({
+            "owner_id": owner_id
+        })
     )
 
-    if not files:
+    if not documents:
         return {
-            "message": "No research papers have been uploaded yet.",
+            "message": "You haven't uploaded any research papers yet.",
             "total_files": 0,
             "files": []
         }
 
+    # 3. Get all document IDs
+    document_ids = [
+        document.get("document_id")
+        for document in documents
+    ]
+
+    # 4. Fetch ALL versions belonging to this user
+    all_versions = document_service.versions.find({
+        "owner_id": owner_id,
+        "document_id": {"$in": document_ids}
+    }).sort("version", 1)
+
+    # 5. Group versions by document_id
+    versions_by_document = {}
+
+    for version_record in all_versions:
+
+        document_id = version_record.get("document_id")
+
+        versions_by_document.setdefault(
+            document_id, []
+        ).append(version_record)
+
+    # 6. Prepare response
     papers = []
 
-    for path in files:
+    for document in documents:
 
-        size_kb = path.stat().st_size / 1024
+        document_id = document.get("document_id")
+        active_version = document.get("active_version")
+
+        version_records = versions_by_document.get(
+            document_id, []
+        )
+
+        versions = []
+
+        for record in version_records:
+
+            version_number = record.get("version")
+
+            versions.append({
+                "version": version_number,
+                "status": record.get("status"),
+                "is_active": version_number == active_version,
+                "file_hash": record.get("file_hash"),
+                "created_at": record.get("created_at")
+            })
 
         papers.append({
-            "filename": path.name,
-            "size_kb": round(size_kb, 1),
+            "document_id": document_id,
+            "paper_title": document.get("paper_title") or "Untitled Paper",
+            "active_version": active_version,
+            "total_versions": len(versions),
+            "versions": versions
         })
 
     return {
-        "message": "Uploaded research papers retrieved successfully.",
+        "message": "Your research papers retrieved successfully.",
         "total_files": len(papers),
         "files": papers
     }

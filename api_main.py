@@ -4,6 +4,8 @@ from api.ingestion import router as ingestion_router
 from api.research import router as research_router
 from api.papers import router as papers_router
 from api.auth import router as auth_router
+from api.retriever_eval import router as retriever_eval
+from api.generator_eval import router as generator_eval
 
 
 app = FastAPI(
@@ -16,6 +18,8 @@ app = FastAPI(
 app.include_router(ingestion_router)
 app.include_router(research_router)
 app.include_router(papers_router)
+app.include_router(retriever_eval)
+app.include_router(generator_eval)
 
 
 #routes for login,signup i.e user information

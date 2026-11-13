@@ -1,34 +1,29 @@
 
-import os
 import json
+import random
+import re
 from pathlib import Path
+
 from dotenv import load_dotenv
 from langchain_core.prompts import ChatPromptTemplate
-from llm.llm import llm
+
+from services.hybrid_search_service import HybridSearchService
+from llm.llm import gemma
+
+from qdrant_client.models import (
+    Filter,
+    FieldCondition,
+    MatchValue
+)
 
 load_dotenv()
 
-# ----------------------------------------
-# PATH CONFIGURATION
-# ----------------------------------------
+generator_llm =gemma
 
-BASE_DIR = Path(__file__).resolve().parent.parent
 
-CHUNKS_DIR = BASE_DIR / "chunks"
-
-OUTPUT_FILE = (
-    BASE_DIR / "goldens" / "faithfulness_goldens.json"
-)
-
-# ----------------------------------------
-# LLM CONFIGURATION
-# ----------------------------------------
-
-llm=llm
-
-# ----------------------------------------
-# PROMPT
-# ----------------------------------------
+# ==========================================
+# 1. PROMPT
+# ==========================================
 
 prompt = ChatPromptTemplate.from_template("""
 You are an expert research paper question generator.
@@ -43,6 +38,7 @@ Rules:
 3. Avoid questions about information not present in the chunk.
 4. Avoid generic questions such as "What is this paper about?"
 5. Return ONLY valid JSON.
+6. Do not include Markdown code fences.
 
 Research Paper:
 {paper_title}
@@ -60,87 +56,203 @@ Expected JSON format:
 }}
 """)
 
-# ----------------------------------------
-# LOAD CHUNKS
-# ----------------------------------------
 
-def load_chunks():
+# ==========================================
+# 2. LOAD USER CHUNKS FROM QDRANT
+# ==========================================
 
-    all_chunks = []
+def load_chunks_from_qdrant(
+    client,
+    owner_id: str,
+    collection_name="research_papers"
+):
 
-    if not CHUNKS_DIR.exists():
-        raise FileNotFoundError(
-            f"Chunks directory not found: {CHUNKS_DIR}"
+    if not owner_id:
+        raise ValueError("owner_id is required")
+
+    chunks = []
+
+    offset = None
+
+    while True:
+
+        points, next_offset = client.scroll(
+
+            collection_name=collection_name,
+
+            scroll_filter=Filter(
+                must=[
+                    FieldCondition(
+                        key="owner_id",
+                        match=MatchValue(value=owner_id)
+                    )
+                ]
+            ),
+
+            limit=100,
+            offset=offset,
+            with_payload=True,
+            with_vectors=False
         )
 
-    for file_path in CHUNKS_DIR.glob("*.json"):
+        for point in points:
 
-        print(f"Loading: {file_path.name}")
+            payload = point.payload or {}
 
-        with open(file_path, "r", encoding="utf-8") as f:
-            data = json.load(f)
+            text = (
+                payload.get("page_content") or ""
+            ).strip()
 
-        # Support both a single chunk and a list of chunks
-        if isinstance(data, dict):
-            all_chunks.append(data)
+            if not text:
+                continue
 
-        elif isinstance(data, list):
-            all_chunks.extend(data)
+            chunks.append({
 
-    print(f"\nTotal chunks loaded: {len(all_chunks)}")
+                "chunk_id": payload.get("chunk_id"),
 
-    return all_chunks
+                "owner_id": payload.get("owner_id"),
+
+                "document_id": payload.get("document_id"),
+
+                "version": payload.get("version"),
+
+                "paper_title": payload.get("paper_title"),
+
+                "section": payload.get("section"),
+
+                "page_start": payload.get("page_start"),
+
+                "page_end": payload.get("page_end"),
+
+                "source_file": payload.get("source_file"),
+
+                "created_at": payload.get("created_at"),
+
+                "char_count": len(text),
+
+                "text": text
+
+            })
+
+        if next_offset is None:
+            break
+
+        offset = next_offset
+
+    return chunks
 
 
-# ----------------------------------------
-# GENERATE QUERY
-# ----------------------------------------
+# ==========================================
+# 3. GENERATE QUERY
+# ==========================================
 
 def generate_query(chunk):
 
-    chain = prompt | llm
+    chain = prompt | generator_llm
 
     response = chain.invoke({
-        "paper_title": chunk.get("paper_title", ""),
-        "section": chunk.get("section", ""),
-        "chunk_text": chunk.get("text", ""),
+
+        "paper_title": chunk.get("paper_title") or "Unknown",
+
+        "section": chunk.get("section") or "Unknown",
+
+        "chunk_text": chunk.get("text", "")
+
     })
 
     content = response.content.strip()
 
-    # Handle possible Markdown JSON formatting
-    content = content.replace("```json", "").replace("```", "").strip()
+    # Remove Markdown code fences
+    content = re.sub(
+        r"^```(?:json)?\s*|\s*```$",
+        "",
+        content,
+        flags=re.IGNORECASE
+    ).strip()
 
-    result = json.loads(content)
+    # Parse JSON, allowing surrounding explanatory text
+    start = content.find("{")
 
-    return result["query"]
+    if start == -1:
+        raise ValueError("LLM did not return a JSON object.")
+
+    result, _ = json.JSONDecoder().raw_decode(
+        content[start:]
+    )
+
+    query = result.get("query")
+
+    if not isinstance(query, str) or not query.strip():
+        raise ValueError("Generated query is missing or invalid.")
+
+    return query.strip()
 
 
-# ----------------------------------------
-# GENERATE FAITHFULNESS GOLDENS
-# ----------------------------------------
+# ==========================================
+# 4. GENERATE GOLDENS FOR ONE USER
+# ==========================================
 
-def generate_faithfulness_goldens():
+def generate_faithfulness_goldens(current_user: dict):
 
-    chunks = load_chunks()
+    if not current_user or current_user.get("_id") is None:
+        raise ValueError("An authenticated user is required.")
+
+    owner_id = str(current_user["_id"])
+
+    print("\n" + "=" * 50)
+    print("GENERATOR GOLDEN DATASET GENERATION")
+    print("=" * 50)
+
+    # Initialize Qdrant service
+    hybrid_service = HybridSearchService()
+
+    # Load only this user's chunks
+    chunks = load_chunks_from_qdrant(
+        client=hybrid_service.client,
+        owner_id=owner_id
+    )
+
+    if not chunks:
+        raise ValueError(
+            "No chunks found for this user!"
+        )
+
+    print(f"Total chunks loaded: {len(chunks)}")
+
+    # ==========================================
+    # 5. SAMPLE CHUNKS
+    # ==========================================
+
+    sample = random.sample(
+        chunks,
+        min(2, len(chunks))
+    )
+
+    print(f"Sampled chunks: {len(sample)}")
+
+    # ==========================================
+    # 6. GENERATE GOLDENS
+    # ==========================================
 
     goldens = []
 
-    for index, chunk in enumerate(chunks, start=1):
+    for index, chunk in enumerate(sample, start=1):
 
-        print(f"\nGenerating golden {index}/{len(chunks)}")
-
-        chunk_text = chunk.get("text", "").strip()
-
-        if not chunk_text:
-            print("Skipping empty chunk")
-            continue
+        print(
+            f"\nGenerating golden {index}/{len(sample)}"
+        )
 
         try:
 
             query = generate_query(chunk)
 
+            chunk_text = chunk["text"]
+
             golden = {
+
+                "id": f"g{index:03d}",
+
+                "owner_id": owner_id,
 
                 # Generated question
                 "query": query,
@@ -150,58 +262,95 @@ def generate_faithfulness_goldens():
 
                 # Original chunk metadata
                 "chunk_id": chunk.get("chunk_id"),
+
+                "document_id": chunk.get("document_id"),
+
+                "version": chunk.get("version"),
+
                 "paper_title": chunk.get("paper_title"),
+
                 "section": chunk.get("section"),
+
                 "page_start": chunk.get("page_start"),
+
                 "page_end": chunk.get("page_end"),
+
                 "source_file": chunk.get("source_file"),
+
                 "text": chunk_text,
+
                 "char_count": chunk.get(
                     "char_count",
                     len(chunk_text)
                 ),
-                "created_at": chunk.get("created_at"),
+
+                "created_at": chunk.get("created_at")
 
             }
 
             goldens.append(golden)
 
-            print(f"Query: {query}")
+            print(f"Generated query: {query}")
 
         except Exception as e:
 
-            print(f"Error processing chunk {index}: {e}")
+            print(
+                f"Error processing chunk {index}: {e}"
+            )
 
-    # ------------------------------------
-    # SAVE JSON
-    # ------------------------------------
+    if not goldens:
+        raise ValueError(
+            "Failed to generate any faithfulness goldens."
+        )
 
-    OUTPUT_FILE.parent.mkdir(
+    # ==========================================
+    # 7. SAVE OWNER-SPECIFIC DATASET
+    # ==========================================
+
+    output_dir = Path("goldens") / owner_id
+
+    output_dir.mkdir(
         parents=True,
         exist_ok=True
     )
 
-    with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
+    output_path = (
+        output_dir / "faithfulness_goldens.json"
+    )
+
+    with open(output_path, "w", encoding="utf-8") as f:
 
         json.dump(
             goldens,
             f,
-            indent=4,
+            indent=2,
             ensure_ascii=False
         )
 
-    print("\n" + "=" * 60)
-    print("FAITHFULNESS GOLDENS GENERATED")
-    print("=" * 60)
+    # ==========================================
+    # 8. SUMMARY
+    # ==========================================
 
-    print(f"Total goldens: {len(goldens)}")
-    print(f"Saved at: {OUTPUT_FILE}")
+    print("\n" + "=" * 50)
+    print("GENERATOR GOLDEN DATASET COMPLETED")
+    print("=" * 50)
+
+    print(f"Owner ID: {owner_id}")
+    print(f"Total chunks: {len(chunks)}")
+    print(f"Sampled chunks: {len(sample)}")
+    print(f"Generated goldens: {len(goldens)}")
+    print(f"Output: {output_path}")
+
+    return str(output_path)
 
 
-# ----------------------------------------
-# ENTRY POINT
-# ----------------------------------------
+# ==========================================
+# 9. ENTRY POINT
+# ==========================================
 
 if __name__ == "__main__":
 
-    generate_faithfulness_goldens()
+    raise SystemExit(
+        "Run generator golden generation "
+        "from the authenticated frontend/API."
+    )

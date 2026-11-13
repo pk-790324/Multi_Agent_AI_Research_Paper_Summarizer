@@ -37,14 +37,13 @@ def chunking_node(
             ).stem.replace("_", " ")
 
         # 3. Generate chunks with page metadata
-        chunks, chunk_file = (
-            ChunkingService.section_aware_chunking(
-                markdown_path=markdown_path,
-                paper_title=paper_title,
-                chunk_size=CHUNK_SIZE,
-                overlap=OVERLAP
-            )
-        )
+        chunks, chunk_file = ChunkingService.section_aware_chunking(
+    markdown_path=markdown_path,
+    paper_title=paper_title,
+    user_id=state["user_id"],
+    chunk_size=1800,
+    overlap=200
+)
 
         print(f"Paper title: {paper_title}")
         print(f"Generated chunks: {len(chunks)}")

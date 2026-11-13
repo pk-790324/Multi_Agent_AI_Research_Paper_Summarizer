@@ -1,8 +1,8 @@
 
 from deepeval.models import DeepEvalBaseLLM
 
-from llm.llm import llm1
-llm=llm1
+from llm.llm import llm1,gemma
+llm=gemma
 
 
 class CustomLLM(DeepEvalBaseLLM):

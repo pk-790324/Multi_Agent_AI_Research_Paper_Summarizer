@@ -61,47 +61,40 @@ JUDGE_MODEL ="My-Project-LLM"
 # RETRIEVER EVALUATION
 # ==========================================
 
-def run(retriever):
+def run(retriever, owner_id, golden_path):
 
-    # 1. LOAD GOLDEN DATASET
-
-    goldens = load_goldens(GOLDEN_PATH)
-
+    goldens = load_goldens(golden_path)
     test_cases = []
-
-    # 2. RETRIEVE DOCUMENTS
 
     for g in goldens:
 
         query = g["query"]
 
-        retrieved = retriever.search(query)
+        retrieved = retriever.search(
+            query=query,
+            user_id=owner_id,
+            top_k=3
+        )
 
-        retrieval_context = extract_retrieval_context(retrieved)
-        
-        
-        # Ground-truth context from golden dataset
+        retrieval_context = extract_retrieval_context(
+            retrieved
+        )
+
         expected_retrieval_context = g[
             "expected_retrieval_context"
         ]
 
-        # 3. BUILD TEST CASE
-
         test_case = LLMTestCase(
-
             input=query,
-
             expected_output=g["ideal_answer"],
-
             actual_output="Generator not evaluated",
-
             retrieval_context=retrieval_context,
-
             expected_retrieval_context=expected_retrieval_context
-
         )
 
         test_cases.append(test_case)
+
+    # Keep your existing metrics and evaluate() code here.
 
     # 4. DEFINE METRICS
 

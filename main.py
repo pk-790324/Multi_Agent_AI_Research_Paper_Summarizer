@@ -187,39 +187,73 @@ import requests
 PAPERS_API_URL = "http://127.0.0.1:8001/papers/uploaded"
 
 
-def list_uploaded_papers():
+
+def list_uploaded_papers(current_user):
+    access_token = (
+        current_user.get("access_token")
+        if current_user
+        else None
+    )
+
+    if not access_token:
+        return "Please log in again to view your uploaded papers."
 
     try:
         response = requests.get(
             PAPERS_API_URL,
+            headers={"Authorization": f"Bearer {access_token}"},
             timeout=10
         )
+
+        if response.status_code == 401:
+            return "Your session has expired. Please log in again."
 
         response.raise_for_status()
 
         data = response.json()
+        papers = data.get("files", [])
 
-        if not data["files"]:
+        if not papers:
             return "No research papers have been uploaded yet."
 
         lines = ["## Uploaded Research Papers", ""]
 
-        for paper in data["files"]:
+        for paper in papers:
 
-            lines.append(
-                f"- **{paper['filename']}** — "
-                f"{paper['size_kb']:.1f} KB"
-            )
+            paper_title = paper.get("paper_title") or "Untitled Paper"
 
-        lines.append("")
-        lines.append(f"**Total papers:** {data['total_files']}")
+            lines.append(f"- **{paper_title}**")
+
+            # Display all versions
+            versions = paper.get("versions", [])
+
+            for version in versions:
+
+                version_number = version.get("version")
+                is_active = version.get("is_active", False)
+                status = version.get("status", "unknown")
+
+                if is_active:
+                    display_status = "🟢 Active"
+                elif status.lower() == "inactive":
+                    display_status = "⚪ Superseded"
+                else:
+                    display_status = status.capitalize()
+
+                lines.append(
+                    f"  - Version {version_number} — {display_status}"
+                )
+
+            lines.append("")
+
+        total_papers = data.get("total_files", len(papers))
+
+        lines.append(f"**Total papers:** {total_papers}")
 
         return "\n".join(lines)
 
     except requests.exceptions.RequestException as exc:
-
         return f"❌ Unable to retrieve uploaded papers: {exc}"
-
 
 # =========================================================
 # MULTI AGENT RESEARCH PAPER PIPELINE
@@ -404,186 +438,72 @@ def run_research_pipeline(user_query: str, current_user):
 import gradio as gr
 import pandas as pd
 
-from evals.eval_retriever import (
-    run_local,
-    format_evaluation_report
-)
-
-
-def run_retriever_evaluation():
-
-    project_root = Path(__file__).resolve().parent
-
-    golden_path = (
-        project_root /
-        "goldens" /
-        "retriever_deepeval_goldens.json"
+def run_retriever_evaluation(current_user):
+    access_token = (
+        current_user.get("access_token")
+        if current_user
+        else None
     )
+    if not access_token:
+        yield (
+            "❌ Please log in to run retriever evaluation.",
+            "⏹ Evaluation stopped.",
+            "⏹ Evaluation stopped.",
+            "⏹ Evaluation stopped.",
+            "",
+        )
+        return
 
-    # Initial state
     yield (
-        "🔄 **Generating golden dataset...**",
-        "⏳ Waiting for generation...",
-        "⏳ Waiting for retrieval...",
-        "⏳ Waiting for evaluation...",
-        ""
+        "🔄 **Running authenticated retriever evaluation...**",
+        "⏳ Golden generation and validation are in progress...",
+        "⏳ Retrieval is in progress...",
+        "⏳ Evaluation is in progress...",
+        "",
     )
 
     try:
-
-        # =====================================
-        # STEP 1: GOLDEN GENERATION
-        # =====================================
-
-        generation = subprocess.run(
-            [
-                sys.executable,
-                "-m",
-                "goldens.generator_goldens"
-            ],
-            cwd=project_root,
-            capture_output=True,
-            text=True,
-            check=True
+        response = requests.post(
+            "http://127.0.0.1:8001/evaluation/retriever",
+            headers={"Authorization": f"Bearer {access_token}"},
+            timeout=(10, None),
         )
-
-        yield (
-            "✅ **Golden dataset generated successfully!**",
-            "🔄 **Validating generated dataset...**",
-            "⏳ Waiting for retrieval...",
-            "⏳ Waiting for evaluation...",
-            ""
-        )
-
-        # =====================================
-        # STEP 2: VALIDATE DATASET
-        # =====================================
-
-        if not golden_path.exists():
-            raise FileNotFoundError(
-                "Golden dataset file was not generated."
+        if not response.ok:
+            try:
+                detail = response.json().get("detail", response.text)
+            except ValueError:
+                detail = response.text
+            raise RuntimeError(
+                f"Retriever evaluation API returned "
+                f"{response.status_code}: {detail}"
             )
 
-        with open(golden_path, "r", encoding="utf-8") as f:
-            goldens = json.load(f)
-
-        if not goldens:
-            raise ValueError("Golden dataset is empty.")
-
-        yield (
-            "✅ **Golden dataset generated successfully!**",
-            f"✅ **Dataset validated: {len(goldens)} golden test cases.**",
-            "🔄 **Initializing hybrid retriever...**",
-            "⏳ Waiting for evaluation...",
-            ""
-        )
-
-        # =====================================
-        # STEP 3: RETRIEVER EVALUATION
-        # =====================================
+        report = response.json().get("results")
+        if not isinstance(report, str):
+            raise ValueError(
+                "Retriever evaluation API returned no results report."
+            )
 
         yield (
             "✅ **Golden generation completed.**",
-            f"✅ **{len(goldens)} golden test cases validated.**",
-            "🔄 **Running Hybrid Retrieval and collecting contexts...**",
-            "⏳ Waiting for evaluation...",
-            ""
-        )
-
-        result = run_local()
-
-        yield (
-            "✅ **Golden generation completed.**",
-            f"✅ **{len(goldens)} golden test cases validated.**",
+            "✅ **Golden dataset validated.**",
             "✅ **Hybrid retrieval completed.**",
-            "🔄 **Calculating DeepEval metrics...**",
-            ""
+            "✅ **DeepEval evaluation completed.**",
+            report,
         )
 
-        # =====================================
-        # STEP 4: FORMAT RESULTS
-        # =====================================
-
-        report = format_evaluation_report(result)
-
+    except (
+        requests.exceptions.RequestException,
+        ValueError,
+        RuntimeError,
+    ) as exc:
         yield (
-            "✅ **Golden generation completed.**",
-            f"✅ **{len(goldens)} golden test cases validated.**",
-            "✅ **Hybrid retrieval completed.**",
-            "✅ **DeepEval evaluation completed!**",
-            report
-        )
-
-    except subprocess.CalledProcessError as e:
-
-        yield (
-            "❌ **Golden generation failed.**",
-            "⏹ Dataset validation skipped.",
-            "⏹ Retriever evaluation skipped.",
-            "⏹ DeepEval evaluation skipped.",
-            f"### Generator Error\n```text\n{e.stderr}\n```"
-        )
-
-    except Exception as e:
-
-        yield (
-            "❌ **Pipeline failed.**",
-            "⏹ Check previous stage.",
+            "❌ **Retriever evaluation failed.**",
+            "⏹ Evaluation stopped.",
             "⏹ Evaluation stopped.",
             "❌ **Error occurred.**",
-            f"### Error\n```text\n{str(e)}\n```"
+            f"```text\n{exc}\n```",
         )
-
-        # =====================================
-        # STEP 2: VERIFY GENERATED DATASET
-        # =====================================
-
-        if not golden_path.exists():
-            return "❌ Golden dataset was not generated."
-
-        with open(golden_path, "r", encoding="utf-8") as f:
-            goldens = json.load(f)
-
-        if not goldens:
-            return "❌ Generated golden dataset is empty."
-
-        generation_message = (
-            f"✅ Golden dataset generated successfully!\n\n"
-            f"- Total goldens: **{len(goldens)}**\n\n"
-        )
-
-        # =====================================
-        # STEP 3: RUN RETRIEVER EVALUATION
-        # =====================================
-
-        result = run_local()
-
-        report = format_evaluation_report(result)
-
-        # =====================================
-        # STEP 4: RETURN COMPLETE REPORT
-        # =====================================
-
-        return (
-            generation_message
-            + "---\n\n"
-            + report
-        )
-
-    except subprocess.CalledProcessError as e:
-
-        return (
-            "## ❌ Golden Dataset Generation Failed\n\n"
-            f"```text\n{e.stderr}\n```"
-        )
-
-    except Exception as e:
-
-        return (
-            "## ❌ Evaluation Error\n\n"
-            f"```text\n{str(e)}\n```"
-        )
-        
 
 
 
@@ -593,40 +513,48 @@ def run_retriever_evaluation():
 # GENERATOR EVALUATION CODE
 # =========================================================
 
-import json
-from pathlib import Path
 
-from goldens.generator_faithfulness import (
-    generate_faithfulness_goldens
-)
-
-from evals.eval_generator import (
-    run as run_generator_evaluation,
-    format_generator_report
-)
+import requests
 
 
+def run_generator_evaluation_pipeline(current_user):
 
-def run_generator_evaluation_pipeline():
+    # =====================================
+    # AUTHENTICATION
+    # =====================================
 
-    project_root = Path(__file__).resolve().parent
-
-    golden_path = (
-        project_root /
-        "goldens" /
-        "faithfulness_goldens.json"
+    access_token = (
+        current_user.get("access_token")
+        if current_user
+        else None
     )
+
+    if not access_token:
+        yield (
+            "❌ Please log in to run generator evaluation.",
+            "⏹ Evaluation stopped.",
+            "⏹ Evaluation stopped.",
+            "⏹ Evaluation stopped.",
+            "",
+        )
+        return
+
+    headers = {
+        "Authorization": f"Bearer {access_token}"
+    }
+
+    base_url = "http://127.0.0.1:8001/evaluation"
 
     # =====================================
     # INITIAL STATUS
     # =====================================
 
     yield (
-        "🔄 **Generating Faithfulness Golden Dataset...**",
-        "⏳ Waiting for dataset validation...",
+        "🔄 **Starting authenticated generator evaluation...**",
+        "⏳ Waiting for golden dataset generation...",
         "⏳ Waiting for multi-agent generation...",
         "⏳ Waiting for DeepEval...",
-        ""
+        "",
     )
 
     try:
@@ -635,46 +563,124 @@ def run_generator_evaluation_pipeline():
         # STEP 1: GENERATE GOLDENS
         # =====================================
 
-        generate_faithfulness_goldens()
+        golden_response = requests.post(
+            f"{base_url}/generator/generate-goldens",
+            headers=headers,
+            timeout=(10, None),
+        )
+
+        if not golden_response.ok:
+
+            try:
+                detail = golden_response.json().get(
+                    "detail",
+                    golden_response.text
+                )
+            except ValueError:
+                detail = golden_response.text
+
+            raise RuntimeError(
+                f"Golden generation API returned "
+                f"{golden_response.status_code}: {detail}"
+            )
+
+        golden_data = golden_response.json()
 
         yield (
             "✅ **Golden dataset generation completed!**",
             "🔄 **Validating generated dataset...**",
             "⏳ Waiting for multi-agent generation...",
             "⏳ Waiting for DeepEval...",
-            ""
+            "",
         )
 
         # =====================================
-        # STEP 2: VALIDATE GOLDENS
+        # STEP 2: VALIDATE GOLDEN RESPONSE
         # =====================================
 
-        if not golden_path.exists():
-            raise FileNotFoundError(
-                "Faithfulness golden dataset was not generated."
+        if golden_data.get("status") not in ("success", "completed"):
+            raise ValueError(
+                "Golden generation API did not confirm successful generation."
             )
 
-        with open(
-            golden_path,
-            "r",
-            encoding="utf-8"
-        ) as f:
+        total_goldens = golden_data.get("total_goldens")
 
-            goldens = json.load(f)
-
-        if not goldens:
+        if total_goldens is not None and total_goldens == 0:
             raise ValueError(
                 "Generated faithfulness golden dataset is empty."
             )
 
         yield (
             "✅ **Golden dataset generated successfully!**",
-            f"✅ **Dataset validated: {len(goldens)} test cases.**",
-            "🔄 **Preparing multi-agent generator evaluation...**",
+            f"✅ **Dataset validated: {total_goldens if total_goldens is not None else 'Available'} test cases.**",
+            "🔄 **Running multi-agent generator...**",
             "⏳ Waiting for DeepEval...",
-            ""
+            "",
         )
 
+        # =====================================
+        # STEP 3: RUN GENERATOR EVALUATION
+        # =====================================
+
+        evaluation_response = requests.post(
+            f"{base_url}/generator",
+            headers=headers,
+            timeout=(10, None),
+        )
+
+        if not evaluation_response.ok:
+
+            try:
+                detail = evaluation_response.json().get(
+                    "detail",
+                    evaluation_response.text
+                )
+            except ValueError:
+                detail = evaluation_response.text
+
+            raise RuntimeError(
+                f"Generator evaluation API returned "
+                f"{evaluation_response.status_code}: {detail}"
+            )
+
+        evaluation_data = evaluation_response.json()
+
+        # =====================================
+        # STEP 4: VALIDATE EVALUATION REPORT
+        # =====================================
+
+        report = evaluation_data.get("report")
+
+        if not isinstance(report, str) or not report.strip():
+            raise ValueError(
+                "Generator evaluation API returned no results report."
+            )
+
+        # =====================================
+        # STEP 5: DISPLAY FINAL RESULTS
+        # =====================================
+
+        yield (
+            "✅ **Golden generation completed.**",
+            "✅ **Golden dataset validated.**",
+            "✅ **Multi-agent generator completed.**",
+            "✅ **DeepEval evaluation completed.**",
+            report,
+        )
+
+    except (
+        requests.exceptions.RequestException,
+        ValueError,
+        RuntimeError,
+    ) as exc:
+
+        yield (
+            "❌ **Generator evaluation failed.**",
+            "⏹ Evaluation stopped.",
+            "⏹ Evaluation stopped.",
+            "❌ **Error occurred.**",
+            f"```text\n{exc}\n```",
+        )
         # =====================================
         # STEP 3: MULTI-AGENT GENERATION
         # =====================================
@@ -1395,6 +1401,7 @@ with gr.Blocks(
 
                     refresh_papers_btn.click(
                         fn=list_uploaded_papers,
+                        inputs=current_user,
                         outputs=papers_output,
                     )
 
@@ -1460,7 +1467,7 @@ with gr.Blocks(
 
                         run_eval_btn.click(
                             fn=run_retriever_evaluation,
-                            inputs=None,
+                            inputs=current_user,
                             outputs=[
                                 generation_status,
                                 validation_status,
@@ -1532,7 +1539,7 @@ with gr.Blocks(
 
                         run_generator_btn.click(
                             fn=run_generator_evaluation_pipeline,
-                            inputs=None,
+                            inputs=current_user,
                             outputs=[
                                 gen_status,
                                 gen_validation_status,

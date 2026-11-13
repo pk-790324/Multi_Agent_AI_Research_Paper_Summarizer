@@ -5,15 +5,33 @@ import re
 from datetime import datetime
 
 
-
 class ChunkingService:
+
     @staticmethod
     def section_aware_chunking(
         markdown_path: str,
         paper_title: str,
-        chunk_size:int,
+        user_id: str,
+        chunk_size: int,
         overlap: int
     ) -> tuple[list[dict], str]:
+
+        # --------------------------------------------------
+        # 1. VALIDATE INPUTS
+        # --------------------------------------------------
+
+        if not user_id or not user_id.strip():
+            raise ValueError("Valid user_id is required")
+
+        user_id = user_id.strip()
+
+        if chunk_size <= 0:
+            raise ValueError("chunk_size must be positive")
+
+        if overlap < 0 or overlap >= chunk_size:
+            raise ValueError(
+                "overlap must be >= 0 and < chunk_size"
+            )
 
         markdown_path = Path(markdown_path)
 
@@ -27,7 +45,7 @@ class ChunkingService:
         )
 
         # --------------------------------------------------
-        # 1. SPLIT MARKDOWN INTO PDF PAGES
+        # 2. SPLIT MARKDOWN INTO PDF PAGES
         # --------------------------------------------------
 
         page_marker = "<!-- PAGE_BREAK -->"
@@ -37,7 +55,6 @@ class ChunkingService:
         if has_page_markers:
             pages = markdown.split(page_marker)
         else:
-            # Page information is unavailable.
             pages = [markdown]
 
         chunks = []
@@ -46,7 +63,7 @@ class ChunkingService:
         current_section = "Document"
 
         # --------------------------------------------------
-        # 2. PROCESS EACH PAGE
+        # 3. PROCESS EACH PAGE
         # --------------------------------------------------
 
         for page_number, page_text in enumerate(
@@ -58,15 +75,10 @@ class ChunkingService:
             section_bodies = []
             current_body = []
 
-            # --------------------------------------------------
-            # 3. EXTRACT SECTION HEADINGS
-            # --------------------------------------------------
-
             for line in lines:
 
                 if re.match(r"^#{1,6}\s+", line):
 
-                    # Save previous section content.
                     if current_body:
                         section_bodies.append(
                             (
@@ -86,7 +98,6 @@ class ChunkingService:
                 else:
                     current_body.append(line)
 
-            # Save the last section on this page.
             if current_body:
                 section_bodies.append(
                     (
@@ -96,7 +107,7 @@ class ChunkingService:
                 )
 
             # --------------------------------------------------
-            # 4. CREATE CHUNKS FOR EACH SECTION
+            # 4. CREATE SECTION-AWARE CHUNKS
             # --------------------------------------------------
 
             for heading, body in section_bodies:
@@ -119,7 +130,6 @@ class ChunkingService:
                         len(body)
                     )
 
-                    # Prefer sentence boundaries.
                     if end < len(body):
 
                         sentence_end = body.rfind(
@@ -138,6 +148,9 @@ class ChunkingService:
                         chunks.append({
 
                             "chunk_id": chunk_id,
+
+                            # NEW: USER OWNERSHIP
+                            "user_id": user_id,
 
                             "paper_title": paper_title,
 
@@ -170,17 +183,16 @@ class ChunkingService:
                     if end >= len(body):
                         break
 
-                    # Preserve overlap.
                     start = max(
                         end - overlap,
                         start + 1
                     )
 
         # --------------------------------------------------
-        # 5. SAVE CHUNKS AS JSON
+        # 5. SAVE CHUNKS IN USER-SPECIFIC DIRECTORY
         # --------------------------------------------------
 
-        output_dir = Path("chunks")
+        output_dir = Path("chunks") / user_id
 
         output_dir.mkdir(
             parents=True,
@@ -201,8 +213,10 @@ class ChunkingService:
             encoding="utf-8"
         )
 
+        print(f"User ID: {user_id}")
         print(f"Page markers detected: {has_page_markers}")
         print(f"Total pages processed: {len(pages)}")
         print(f"Total chunks generated: {len(chunks)}")
+        print(f"Chunk file: {chunk_file}")
 
         return chunks, str(chunk_file)
