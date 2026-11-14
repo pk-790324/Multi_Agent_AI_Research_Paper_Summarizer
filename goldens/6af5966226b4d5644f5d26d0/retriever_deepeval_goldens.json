@@ -1,0 +1,40 @@
+[
+  {
+    "id": "g001",
+    "query": "What is the command to change to a specific directory path?",
+    "ideal_answer": "The command to change to a specific directory path is `cd path\\_to\\_directory`.",
+    "expected_retrieval_context": [
+      "``` None ``` cd path\\_to\\_directory"
+    ],
+    "source": {
+      "owner_id": "6af5966226b4d5644f5d26d0",
+      "document_id": "61135bbf-c8b6-4196-bbf6-ba5ad602ea1d",
+      "version": 1,
+      "chunk_id": 7,
+      "paper_title": "Module 1 Cheat Sheet - Introduction to Linux",
+      "section": "To some other directory:",
+      "page_start": 3,
+      "page_end": 3,
+      "source_file": "parsed_papers\\4c56edf2-507e-4d75-98c6-2eba0db920d2.md"
+    }
+  },
+  {
+    "id": "g002",
+    "query": "Compare weight and activation quantization functions in BitNet b1.58, highlighting their differences.",
+    "ideal_answer": "BitNet b1.58 uses different quantization functions for weights and activations:\n\n*   **Weights:** Uses an **absmean quantization function** that scales the weight matrix by its average absolute value and rounds each value to **-1, 0, or +1**.\n*   **Activations:** Follows the original BitNet implementation but removes scaling to the range [0, $Q_b$] before non-linear functions. Instead, activations are scaled to **[-$Q_b$, $Q_b$] per token** to eliminate zero-point quantization.",
+    "expected_retrieval_context": [
+      "BitNet b1.58 is based on the BitNet architecture, which is a Transformer that replaces nn.Linear with BitLinear . It is trained from scratch, with 1.58-bit weights and 8-bit activations. Compared to the original BitNet, it introduces some modifications that we summarize below. Quantization Function. To constrain the weights to -1, 0, or +1, we adopt an absmean quantization function. It first scales the weight matrix by its average absolute value, and then round each value to the nearest integer among {-1, 0, +1}: <!-- formula-not-decoded --> <!-- formula-not-decoded --> <!-- formula-not-decoded --> The quantization function for activations follows the same implementation in BitNet, except that we do not scale the activations before the non-linear functions to the range [0 , Q b ] . Instead, the activations are all scaled to [ -Q b , Q b ] per token to get rid of the zero-point quantization. This is more convenient and simple for both implementation and system-level optimization, while introduces negligible effects to the performance in our experiments."
+    ],
+    "source": {
+      "owner_id": "6af5966226b4d5644f5d26d0",
+      "document_id": "1e983ee3-dfc2-430a-8032-12c5cd8afc5a",
+      "version": 1,
+      "chunk_id": 5,
+      "paper_title": "The Era of 1-bit LLMs: All Large Language Models are in 1.58 Bits",
+      "section": "2 BitNet b1.58",
+      "page_start": 2,
+      "page_end": 2,
+      "source_file": "parsed_papers\\e086d65b-efc3-481c-b5a5-bf07ea7696a3.md"
+    }
+  }
+]

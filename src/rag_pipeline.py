@@ -6,14 +6,18 @@ from langsmith import traceable
 
 class RagPipeline:
 
-    def __init__(self):
+    def __init__(self, owner_id: str):
+        self.owner_id = owner_id
         self.retriever = HybridSearchService()
 
     @traceable(run_type="chain", name="RagPipeline")
     def invoke(self, query: str) -> dict:
 
         # 1. LIVE RETRIEVAL
-        docs = self.retriever.search(query)
+        docs = self.retriever.search(
+            query=query,
+            user_id=self.owner_id,
+        )
 
         if not docs:
             raise ValueError(
@@ -74,20 +78,3 @@ class RagPipeline:
             "answer": answer,
             "agent_outputs": result,
         }
-
-
-if __name__ == "__main__":
-
-    rag = RagPipeline()
-
-    result = rag.invoke(
-        "Summarize the era of 1-bit LLM papers in short."
-    )
-
-    print("\nQUERY:", result["query"])
-    print("\nANSWER:", result["answer"])
-
-    print("\nCONTEXT CHUNKS:")
-
-    for i, chunk in enumerate(result["context"]):
-        print(f"\n[{i}] {chunk[:120]}...")

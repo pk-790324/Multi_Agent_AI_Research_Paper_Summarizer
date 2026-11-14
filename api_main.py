@@ -6,6 +6,7 @@ from api.papers import router as papers_router
 from api.auth import router as auth_router
 from api.retriever_eval import router as retriever_eval
 from api.generator_eval import router as generator_eval
+from api.rag_pipeline_evaluation import router as rag_pipeline_eval
 
 
 app = FastAPI(
@@ -20,6 +21,7 @@ app.include_router(research_router)
 app.include_router(papers_router)
 app.include_router(retriever_eval)
 app.include_router(generator_eval)
+app.include_router(rag_pipeline_eval)
 
 
 #routes for login,signup i.e user information

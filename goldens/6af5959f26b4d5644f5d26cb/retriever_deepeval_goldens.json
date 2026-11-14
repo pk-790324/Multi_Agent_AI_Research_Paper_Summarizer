@@ -1,39 +1,39 @@
 [
   {
     "id": "g001",
-    "query": "List all authors associated with https://aka.ms/GeneralAI, including Shuming Ma and Furu Wei.",
-    "ideal_answer": "The authors associated with https://aka.ms/GeneralAI are Shuming Ma, Hongyu Wang, Lingxiao Ma, Lei Wang, Wenhui Wang, Shaohan Huang, Li Dong, Ruiping Wang, Jilong Xue, and Furu Wei.",
+    "query": "How does current launch complexity impact the frequency and agility of future model iterations?",
+    "ideal_answer": "Current launch complexity can slow down future launches. To maintain agility and the ability to launch models frequently (potentially once per quarter or more), you should ensure it is easy to add, remove, or recombine features, create and verify fresh pipeline copies, and run multiple copies in parallel.",
     "expected_retrieval_context": [
-      "Shuming Ma ∗ Hongyu Wang ∗ Lingxiao Ma Lei Wang Wenhui Wang Shaohan Huang Li Dong Ruiping Wang Jilong Xue Furu Wei ⋄ [https://aka.ms/GeneralAI](https://aka.ms/GeneralAI)"
-    ],
-    "source": {
-      "owner_id": "6af5959f26b4d5644f5d26cb",
-      "document_id": "d96bd246-571a-47a3-a8d5-02212814cab0",
-      "version": 1,
-      "chunk_id": 1,
-      "paper_title": "The Era of 1-bit LLMs: All Large Language Models are in 1.58 Bits",
-      "section": "The Era of 1-bit LLMs: All Large Language Models are in 1.58 Bits",
-      "page_start": 1,
-      "page_end": 1,
-      "source_file": "parsed_papers\\38690ffc-d71a-4c21-a9ac-05f9900612de.md"
-    }
-  },
-  {
-    "id": "g002",
-    "query": "Explain why sanity checks on held-out data must precede export to prevent user-facing issues.",
-    "ideal_answer": "Sanity checks on held-out data must precede export because issues with an exported model become user-facing, whereas issues occurring before export are merely training issues that users will not notice. Performing these checks ensures model performance is reasonable, allowing teams to address problems via email alerts rather than triggering urgent pages for user-facing failures.",
-    "expected_retrieval_context": [
-      "Many machine learning systems have a stage where you export the model to serving. If there is an issue with an exported model, it is a user­facing issue. If there is an issue before, then it is a training issue, and users will not notice. Do sanity checks right before you export the model. Specifically, make sure that the model's performance is reasonable on held out data. Or, if you have lingering concerns with the data, don't export a model. Many teams continuously deploying models check the area under the ROC curve (or AUC) before exporting. Issues about models that haven't been exported require an e­mail alert, but issues on a user­facing model may require a page. So better to wait and be sure before impacting users."
+      "Don't expect that the model you are working on now will be the last one that you will launch, or even that you will ever stop launching models. Thus consider whether the complexity you are adding with this launch will slow down future launches. Many teams have launched a model per quarter or more for years. There are three basic reasons to launch new models: 1. you are coming up with new features, 2. you are tuning regularization and combining old features in new ways, and/or 3. you are tuning the objective. Regardless, giving a model a bit of love can be good: looking over the data feeding into the example can help find new signals as well as old, broken ones. So, as you build your model, think about how easy it is to add or remove or recombine features. Think about how easy it is to create a fresh copy of the pipeline and verify its correctness. Think about whether it is possible to have two or three copies running in parallel. Finally, don't worry about whether feature 16 of 35 makes it into this version of the pipeline. You'll get it next quarter."
     ],
     "source": {
       "owner_id": "6af5959f26b4d5644f5d26cb",
       "document_id": "95c5b82f-7ba0-4739-bda5-eda44403fd28",
       "version": 1,
-      "chunk_id": 27,
+      "chunk_id": 37,
       "paper_title": "Rules of Machine Learning: Best Practices for ML Engineering",
-      "section": "Rule   #9:   Detect   problems   before   exporting   models.",
-      "page_start": 8,
-      "page_end": 8,
+      "section": "Rule   #16:   Plan   to   launch   and   iterate.",
+      "page_start": 11,
+      "page_end": 11,
+      "source_file": "parsed_papers\\d01809d2-cd30-4669-b7bc-d7a3d9dabf54.md"
+    }
+  },
+  {
+    "id": "g002",
+    "query": "Why quantify system gripes first, and how can human raters help measure \"gag apps\"?",
+    "ideal_answer": "Quantifying system gripes first is necessary because issues must be measurable before they can be used as features, objectives, or metrics (\"measure first, optimize second\"). Human raters can help measure \"gag apps\" by identifying them in Play Search, which is feasible since a small fraction of queries account for a large portion of traffic.",
+    "expected_retrieval_context": [
+      "Some members of your team will start to be frustrated with properties of the system they don't like which aren't captured by the existing loss function. At this point, they should do whatever it takes to turn their gripes into solid numbers. For example, if they think that too many 'gag apps' are being shown in Play Search, they could have human raters identify gag apps. (You can feasibly use human­labelled data in this case because a relatively small fraction of the queries account for a large fraction of the traffic.) If your issues are measurable, then you can start using them as features, objectives, or metrics. The general rule is 'measure first, optimize second'."
+    ],
+    "source": {
+      "owner_id": "6af5959f26b4d5644f5d26cb",
+      "document_id": "95c5b82f-7ba0-4739-bda5-eda44403fd28",
+      "version": 1,
+      "chunk_id": 52,
+      "paper_title": "Rules of Machine Learning: Best Practices for ML Engineering",
+      "section": "Rule   #27:   Try   to   quantify   observed   undesirable   behavior.",
+      "page_start": 16,
+      "page_end": 16,
       "source_file": "parsed_papers\\d01809d2-cd30-4669-b7bc-d7a3d9dabf54.md"
     }
   }

@@ -1,115 +1,5 @@
-
-# from dotenv import load_dotenv
-
-# from deepeval import evaluate
-# from deepeval.test_case import LLMTestCase
-# from deepeval.metrics import (
-#     FaithfulnessMetric,
-#     AnswerRelevancyMetric,
-#     ContextualRelevancyMetric,
-# )
-
-# from src.rag_pipeline import RagPipeline
-# from evals.harness import (
-#     load_goldens,
-#     summarize_by_metric,
-#     print_summary,
-# )
-
-# from judge_llm.judge_llm import judge_llm
-
-# load_dotenv()
-
-
-# GOLDEN_PATH = "goldens/faithfulness_goldens.json"
-
-# JUDGE_MODEL = judge_llm
-# THRESHOLD = 0.7
-
-
-# def run(rag):
-
-#     # 1. LOAD GOLDENS
-#     goldens = load_goldens(GOLDEN_PATH)
-#     goldens=goldens[:1]
-
-#     if not goldens:
-#         raise ValueError("No golden test cases found.")
-
-#     test_cases = []
-
-#     # 2. RUN LIVE RAG PIPELINE
-#     for index, golden in enumerate(goldens, start=1):
-
-#         query = golden["query"]
-
-#         print(f"\nRunning RAG evaluation {index}/{len(goldens)}")
-#         print("Query:", query)
-
-#         result = rag.invoke(query)
-
-#         # 3. BUILD DEEPEVAL TEST CASE
-#         test_case = LLMTestCase(
-#             input=query,
-#             actual_output=result["answer"],
-#             retrieval_context=result["context"],
-#         )
-
-#         test_cases.append(test_case)
-
-#     # 4. DEFINE METRICS
-#     metrics = [
-#         ContextualRelevancyMetric(
-#             threshold=THRESHOLD,
-#             model=JUDGE_MODEL,
-#             include_reason=True,
-#         ),
-
-#         FaithfulnessMetric(
-#             threshold=THRESHOLD,
-#             model=JUDGE_MODEL,
-#             include_reason=True,
-#         ),
-
-#         AnswerRelevancyMetric(
-#             threshold=THRESHOLD,
-#             model=JUDGE_MODEL,
-#             include_reason=True,
-#         ),
-#     ]
-
-#     # 5. RUN EVALUATION
-#     evaluation_result = evaluate(
-#         test_cases=test_cases,
-#         metrics=metrics,
-#     )
-
-#     # Return raw result for the Gradio report formatter
-#     return evaluation_result
-
-
-# def run_local():
-
-#     rag = RagPipeline()
-
-#     return run(rag)
-
-
-# if __name__ == "__main__":
-
-#     result = run_local()
-
-#     summary = summarize_by_metric(result)
-
-#     print_summary("rag_pipeline", summary)
-
-
-# in serial way
-
-
-
+from pathlib import Path
 from dotenv import load_dotenv
-
 from deepeval import evaluate
 from deepeval.test_case import LLMTestCase
 from deepeval.metrics import (
@@ -119,109 +9,39 @@ from deepeval.metrics import (
 )
 
 from src.rag_pipeline import RagPipeline
-from evals.harness import (
-    load_goldens,
-    summarize_by_metric,
-    print_summary,
-)
-
+from evals.harness import load_goldens
 from judge_llm.judge_llm import judge_llm
 
 load_dotenv()
 
-GOLDEN_PATH = "goldens/faithfulness_goldens.json"
 
-JUDGE_MODEL = judge_llm
+# =========================================================
+# CONFIGURATION
+# =========================================================
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+
 THRESHOLD = 0.7
+JUDGE_MODEL = judge_llm
 
 
-def run(rag):
+# =========================================================
+# 1. USER-SPECIFIC GOLDEN PATH
+# =========================================================
 
-    # 1. LOAD GOLDENS
-    goldens = load_goldens(GOLDEN_PATH)
+def get_golden_path(owner_id: str) -> Path:
 
-    if not goldens:
-        raise ValueError("No golden test cases found.")
-
-    # 2. DEFINE METRICS
-    metrics = [
-        ContextualRelevancyMetric(
-            threshold=THRESHOLD,
-            model=JUDGE_MODEL,
-            include_reason=True,
-        ),
-        FaithfulnessMetric(
-            threshold=THRESHOLD,
-            model=JUDGE_MODEL,
-            include_reason=True,
-        ),
-        AnswerRelevancyMetric(
-            threshold=THRESHOLD,
-            model=JUDGE_MODEL,
-            include_reason=True,
-        ),
-    ]
-
-    all_results = []
-
-    # 3. SERIAL EVALUATION
-    for index, golden in enumerate(goldens, start=1):
-
-        query = golden["query"]
-
-        print("\n" + "=" * 60)
-        print(f"RAG EVALUATION {index}/{len(goldens)}")
-        print("=" * 60)
-
-        print("\nQUERY:", query)
-
-        # A. RUN LIVE RAG
-        rag_result = rag.invoke(query)
-
-        # B. BUILD TEST CASE
-        test_case = LLMTestCase(
-            input=query,
-            actual_output=rag_result["answer"],
-            retrieval_context=rag_result["context"],
-        )
-
-        # C. EVALUATE THIS TEST CASE ONLY
-        print("\nRunning DeepEval metrics...")
-
-        evaluation_result = evaluate(
-            test_cases=[test_case],
-            metrics=metrics,
-        )
-
-        all_results.append(evaluation_result)
-
-        print(f"\nCompleted test case {index}/{len(goldens)}")
-
-    return all_results
+    return (
+        BASE_DIR
+        / "goldens"
+        / owner_id
+        / "faithfulness_goldens.json"
+    )
 
 
-def run_local():
-
-    rag = RagPipeline()
-
-    return run(rag)
-
-
-if __name__ == "__main__":
-
-    results = run_local()
-
-    for index, result in enumerate(results, start=1):
-
-        print("\n" + "#" * 60)
-        print(f"RESULT FOR TEST CASE {index}")
-        print("#" * 60)
-
-        summary = summarize_by_metric(result)
-
-        print_summary("rag_pipeline", summary)
-
-
+# =========================================================
+# 2. CREATE DEEPEVAL METRICS
+# =========================================================
 
 def create_metrics():
 
@@ -231,11 +51,13 @@ def create_metrics():
             model=JUDGE_MODEL,
             include_reason=True,
         ),
+
         FaithfulnessMetric(
             threshold=THRESHOLD,
             model=JUDGE_MODEL,
             include_reason=True,
         ),
+
         AnswerRelevancyMetric(
             threshold=THRESHOLD,
             model=JUDGE_MODEL,
@@ -244,7 +66,16 @@ def create_metrics():
     ]
 
 
-def format_rag_result(result, index, query, answer):
+# =========================================================
+# 3. FORMAT ONE TEST CASE RESULT
+# =========================================================
+
+def format_rag_result(
+    evaluation_result,
+    index: int,
+    query: str,
+    answer: str,
+):
 
     lines = [
         f"## Test Case {index}",
@@ -256,7 +87,7 @@ def format_rag_result(result, index, query, answer):
         "### Metric Results",
     ]
 
-    for test in result.test_results:
+    for test in evaluation_result.test_results:
 
         for metric in test.metrics_data:
 
@@ -278,78 +109,377 @@ def format_rag_result(result, index, query, answer):
     return "\n".join(lines)
 
 
-def run_rag_pipeline_gradio():
+# =========================================================
+# 4. MAIN RAG EVALUATION FUNCTION
+# =========================================================
 
-    goldens = load_goldens(GOLDEN_PATH)
+def run_rag_evaluation(current_user: dict):
+
+    # =====================================
+    # AUTHENTICATED USER
+    # =====================================
+
+    if not current_user or not current_user.get("_id"):
+        raise ValueError(
+            "Authenticated user information is missing."
+        )
+
+    owner_id = str(current_user["_id"])
+
+    # =====================================
+    # LOAD USER-SPECIFIC GOLDENS
+    # =====================================
+
+    golden_path = get_golden_path(owner_id)
+
+    if not golden_path.exists():
+        raise FileNotFoundError(
+            f"Golden dataset not found for this user: {golden_path}"
+        )
+
+    goldens = load_goldens(str(golden_path))
 
     if not goldens:
-        yield "No golden test cases found.", ""
-        return
+        raise ValueError(
+            "No RAG evaluation golden test cases found."
+        )
 
-    rag = RagPipeline()
+    # =====================================
+    # INITIALIZE USER-SCOPED RAG PIPELINE
+    # =====================================
+
+    rag = RagPipeline(owner_id=owner_id)
+
     metrics = create_metrics()
 
     total = len(goldens)
-    report = ""
+
+    all_reports = []
+    errors = []
+
+    passed_cases = 0
+    failed_cases = 0
+
+    # =====================================
+    # SERIAL RAG EVALUATION
+    # =====================================
 
     for index, golden in enumerate(goldens, start=1):
 
-        query = golden["query"]
+        query = golden.get("query")
 
-        # Show progress before running this test
-        yield (
-            f"Running RAG evaluation: {index}/{total}",
-            report
-        )
+        if not query:
+            errors.append(
+                f"Test case {index}: Missing query in golden dataset."
+            )
+            failed_cases += 1
+            continue
 
         try:
 
-            # 1. LIVE RAG EXECUTION
+            # ---------------------------------
+            # A. RUN LIVE RAG PIPELINE
+            # ---------------------------------
+
             rag_result = rag.invoke(query)
 
-            # 2. BUILD TEST CASE
+            answer = rag_result.get("answer", "")
+            context = rag_result.get("context", [])
+
+            if not answer:
+                raise ValueError(
+                    "RAG pipeline returned an empty answer."
+                )
+
+            if not context:
+                raise ValueError(
+                    "RAG pipeline returned an empty retrieval context."
+                )
+
+            # ---------------------------------
+            # B. BUILD DEEPEVAL TEST CASE
+            # ---------------------------------
+
             test_case = LLMTestCase(
                 input=query,
-                actual_output=rag_result["answer"],
-                retrieval_context=rag_result["context"],
+                actual_output=answer,
+                retrieval_context=context,
             )
 
-            # 3. EVALUATE ONE TEST CASE
+            # ---------------------------------
+            # C. RUN DEEPEVAL
+            # ---------------------------------
+
             evaluation_result = evaluate(
                 test_cases=[test_case],
                 metrics=metrics,
             )
 
-            # 4. FORMAT RESULT
-            report += format_rag_result(
-                evaluation_result,
-                index,
-                query,
-                rag_result["answer"],
+            # ---------------------------------
+            # D. FORMAT RESULT
+            # ---------------------------------
+
+            case_report = format_rag_result(
+                evaluation_result=evaluation_result,
+                index=index,
+                query=query,
+                answer=answer,
             )
 
-            report += "\n\n---\n\n"
+            all_reports.append(case_report)
 
-            # Update Gradio after each test case
-            yield (
-                f"Completed {index}/{total} test cases",
-                report
+            # ---------------------------------
+            # E. COUNT PASSED / FAILED CASES
+            # ---------------------------------
+
+            case_metrics = [
+                metric
+                for test in evaluation_result.test_results
+                for metric in test.metrics_data
+            ]
+
+            if case_metrics and all(
+                metric.success for metric in case_metrics
+            ):
+                passed_cases += 1
+            else:
+                failed_cases += 1
+
+        except Exception as exc:
+
+            failed_cases += 1
+
+            errors.append(
+                f"Test case {index} failed: {str(exc)}"
             )
 
-        except Exception as e:
-
-            report += (
+            all_reports.append(
                 f"## Test Case {index} - ERROR\n"
                 f"**Query:** {query}\n\n"
-                f"**Error:** `{str(e)}`\n\n---\n\n"
+                f"**Error:** `{str(exc)}`"
             )
 
-            yield (
-                f"Error in test case {index}/{total}: {str(e)}",
-                report
-            )
+    # =====================================
+    # BUILD FINAL REPORT
+    # =====================================
+
+    total_processed = passed_cases + failed_cases
+
+    pass_rate = (
+        (passed_cases / total_processed) * 100
+        if total_processed
+        else 0
+    )
+
+    report = [
+        "# End-to-End RAG Pipeline Evaluation",
+        "",
+        "## Evaluation Summary",
+        f"- **Total golden cases:** {total}",
+        f"- **Passed cases:** {passed_cases}",
+        f"- **Failed cases:** {failed_cases}",
+        f"- **Pass rate:** {pass_rate:.2f}%",
+        "",
+        "---",
+        "",
+        "\n\n---\n\n".join(all_reports),
+    ]
+
+    if errors:
+        report.extend([
+            "",
+            "## Errors",
+            *[f"- {error}" for error in errors],
+        ])
+
+    return {
+        "status": (
+            "success"
+            if failed_cases == 0
+            else "partial"
+        ),
+        "total_goldens": total,
+        "total_tests": total_processed,
+        "passed": passed_cases,
+        "failed": failed_cases,
+        "pass_rate": round(pass_rate, 2),
+        "errors": errors,
+        "report": "\n".join(report),
+    }
+
+
+
+
+# =========================================================
+# RAG PIPELINE EVALUATION
+# =========================================================
+
+import requests
+
+
+
+# =========================================================
+# RAG PIPELINE EVALUATION
+# =========================================================
+
+import requests
+
+
+def run_rag_pipeline_gradio(current_user):
+
+    # =====================================
+    # AUTHENTICATION
+    # =====================================
+
+    access_token = (
+        current_user.get("access_token")
+        if current_user
+        else None
+    )
+
+    if not access_token:
+        yield (
+            "❌ Please log in to run RAG pipeline evaluation.",
+            "⏹ Evaluation stopped.",
+            "⏹ Evaluation stopped.",
+            "⏹ Evaluation stopped.",
+            "❌ Please log in to view the report.",
+        )
+        return
+
+    headers = {
+        "Authorization": f"Bearer {access_token}"
+    }
+
+    base_url = "http://127.0.0.1:8001/evaluation"
+
+    # =====================================
+    # INITIAL STATUS
+    # =====================================
 
     yield (
-        f"RAG evaluation completed: {total} test cases processed.",
-        report
+        "🔄 **Starting authenticated RAG evaluation...**",
+        "⏳ Waiting for golden generation...",
+        "⏳ Waiting for RAG pipeline execution...",
+        "⏳ Waiting for DeepEval evaluation...",
+        "Evaluation has not started yet.",
     )
+
+    try:
+
+        # =====================================
+        # STEP 1: GENERATE GOLDENS
+        # =====================================
+
+        golden_response = requests.post(
+            f"{base_url}/generator/generate-goldens",
+            headers=headers,
+            timeout=(10, None),
+        )
+
+        if not golden_response.ok:
+            try:
+                detail = golden_response.json().get(
+                    "detail",
+                    golden_response.text
+                )
+            except ValueError:
+                detail = golden_response.text
+
+            raise RuntimeError(
+                f"Golden generation API returned "
+                f"{golden_response.status_code}: {detail}"
+            )
+
+        golden_data = golden_response.json()
+
+        if golden_data.get("status") not in (
+            "success",
+            "completed",
+        ):
+            raise ValueError(
+                "Golden generation was not confirmed successful."
+            )
+
+        total_goldens = golden_data.get("total_goldens")
+
+        if total_goldens is not None and total_goldens == 0:
+            raise ValueError(
+                "Generated golden dataset is empty."
+            )
+
+        # =====================================
+        # STEP 2: GOLDEN VALIDATION COMPLETED
+        # =====================================
+
+        yield (
+            "✅ **Golden generation completed.**",
+            f"✅ **Dataset validated: {total_goldens if total_goldens is not None else 'Available'} test cases.**",
+            "🔄 **Preparing live RAG pipeline...**",
+            "⏳ Waiting for DeepEval evaluation...",
+            "",
+        )
+
+        # =====================================
+        # STEP 3: RUN RAG EVALUATION
+        # =====================================
+
+        evaluation_response = requests.post(
+            f"{base_url}/rag",
+            headers=headers,
+            timeout=(10, None),
+        )
+
+        if not evaluation_response.ok:
+            try:
+                detail = evaluation_response.json().get(
+                    "detail",
+                    evaluation_response.text
+                )
+            except ValueError:
+                detail = evaluation_response.text
+
+            raise RuntimeError(
+                f"RAG evaluation API returned "
+                f"{evaluation_response.status_code}: {detail}"
+            )
+
+        evaluation_data = evaluation_response.json()
+
+        # =====================================
+        # STEP 4: VALIDATE REPORT
+        # =====================================
+
+        report = evaluation_data.get("report")
+
+        if not isinstance(report, str) or not report.strip():
+            raise ValueError(
+                "RAG evaluation API returned no results report."
+            )
+
+        # =====================================
+        # STEP 5: FINAL RESULTS
+        # =====================================
+
+        yield (
+            "✅ **Golden generation completed.**",
+            "✅ **Golden dataset validated.**",
+            "✅ **RAG pipeline execution completed.**",
+            "✅ **DeepEval evaluation completed.**",
+            report,
+        )
+
+    except (
+        requests.exceptions.RequestException,
+        ValueError,
+        RuntimeError,
+    ) as exc:
+
+        yield (
+            "❌ **RAG pipeline evaluation failed.**",
+            "⏹ Evaluation stopped.",
+            "⏹ Evaluation stopped.",
+            "❌ **Error occurred.**",
+            f"```text\n{exc}\n```",
+        )
+

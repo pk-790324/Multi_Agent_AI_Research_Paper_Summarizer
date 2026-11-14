@@ -1,7 +1,7 @@
 
 from deepeval.models import DeepEvalBaseLLM
 
-from llm.llm import llm1,gemma
+from llm.llm import gemma
 llm=gemma
 
 

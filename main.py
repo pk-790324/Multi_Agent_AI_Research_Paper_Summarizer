@@ -1555,7 +1555,6 @@ with gr.Blocks(
                 # =========================
                 # PAGE 7: RAG EVALUATION PIPELINE
                 # =========================
-                
                 with gr.Column(visible=False) as rag_evaluation_pipeline_page:
                     with gr.Group():
 
@@ -1573,22 +1572,52 @@ with gr.Blocks(
                             variant="primary"
                         )
 
-                        rag_status = gr.Markdown(
-                            "Waiting to start evaluation..."
+                        # =====================================
+                        # EVALUATION STATUS
+                        # =====================================
+
+                        rag_golden_generation_status = gr.Markdown(
+                            "⏳ Waiting for golden generation..."
                         )
 
-                        rag_report = gr.Markdown(
-                            label="RAG Evaluation Report"
+                        rag_golden_validation_status = gr.Markdown(
+                            "⏳ Waiting for dataset validation..."
                         )
+
+                        rag_pipeline_status = gr.Markdown(
+                            "⏳ Waiting for RAG pipeline execution..."
+                        )
+
+                        rag_evaluation_status = gr.Markdown(
+                            "⏳ Waiting for DeepEval evaluation..."
+                        )
+
+                        # =====================================
+                        # EVALUATION REPORT
+                        # =====================================
+
+                        gr.Markdown("## 📊 RAG Evaluation Report")
+
+                        rag_evaluation_report = gr.Markdown(
+                            "Your evaluation report will appear here."
+                        )
+
+                        # =====================================
+                        # BUTTON EVENT
+                        # =====================================
 
                         run_rag_btn.click(
                             fn=run_rag_pipeline_gradio,
-                            inputs=[],
+                            inputs=current_user,
                             outputs=[
-                                rag_status,
-                                rag_report
-                            ]
+                                rag_golden_generation_status,
+                                rag_golden_validation_status,
+                                rag_pipeline_status,
+                                rag_evaluation_status,
+                                rag_evaluation_report,
+                            ],
                         )
+
 
                 
                 # =========================

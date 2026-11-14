@@ -1,0 +1,36 @@
+[
+  {
+    "id": "g001",
+    "owner_id": "6af5966226b4d5644f5d26d0",
+    "query": "What are the two additional advantages of BitNet b1.58 compared to the original 1-bit BitNet and FP16 baselines?",
+    "ideal_context": "ated into faster computation. In addition to computation, the process of transferring model parameters from DRAM to the memory of an on-chip accelerator (e.g., SRAM) can be expensive during inference. There have been attempts to enlarge SRAM to improve throughput, but this introduces significantly higher costs than DRAM. Compared to full-precision models, 1-bit LLMs have a much lower memory footprint from both a capacity and bandwidth standpoint. This can significantly reduce the cost and time of loading weights from DRAM, leading to faster and more efficient inference. In this work, we introduce a significant 1-bit LLM variant called BitNet b1.58 , where every parameter is ternary, taking on values of {-1, 0, 1}. We have added an additional value of 0 to the original 1-bit BitNet, resulting in 1.58 bits in the binary system. BitNet b1.58 retains all the benefits of the original 1-bit BitNet, including its new computation paradigm, which requires almost no multiplication operations for matrix multiplication and can be highly optimized. Additionally, it has the same energy consumption as the original 1-bit BitNet and is much more efficient in terms of memory consumption, throughput and latency compared to FP16 LLM baselines. Furthermore, BitNet b1.58 offers two additional advantages. Firstly, its modeling capability is stronger due to its explicit support for feature filtering, made possible by the inclusion of 0 in the model weights, which can significantly improve the performance of 1-bit LLMs. Secondly, our experiments show that BitNet b1.58 can match full precision (i.e., FP16) baselines in terms of both perplexity and end-task performance, starting from a 3B size, when using the same configuration (e.g., model size, training tokens, etc.).",
+    "chunk_id": 4,
+    "document_id": "1e983ee3-dfc2-430a-8032-12c5cd8afc5a",
+    "version": 1,
+    "paper_title": "The Era of 1-bit LLMs: All Large Language Models are in 1.58 Bits",
+    "section": "1 The Era of 1-bit LLMs",
+    "page_start": 2,
+    "page_end": 2,
+    "source_file": "parsed_papers\\e086d65b-efc3-481c-b5a5-bf07ea7696a3.md",
+    "text": "ated into faster computation. In addition to computation, the process of transferring model parameters from DRAM to the memory of an on-chip accelerator (e.g., SRAM) can be expensive during inference. There have been attempts to enlarge SRAM to improve throughput, but this introduces significantly higher costs than DRAM. Compared to full-precision models, 1-bit LLMs have a much lower memory footprint from both a capacity and bandwidth standpoint. This can significantly reduce the cost and time of loading weights from DRAM, leading to faster and more efficient inference. In this work, we introduce a significant 1-bit LLM variant called BitNet b1.58 , where every parameter is ternary, taking on values of {-1, 0, 1}. We have added an additional value of 0 to the original 1-bit BitNet, resulting in 1.58 bits in the binary system. BitNet b1.58 retains all the benefits of the original 1-bit BitNet, including its new computation paradigm, which requires almost no multiplication operations for matrix multiplication and can be highly optimized. Additionally, it has the same energy consumption as the original 1-bit BitNet and is much more efficient in terms of memory consumption, throughput and latency compared to FP16 LLM baselines. Furthermore, BitNet b1.58 offers two additional advantages. Firstly, its modeling capability is stronger due to its explicit support for feature filtering, made possible by the inclusion of 0 in the model weights, which can significantly improve the performance of 1-bit LLMs. Secondly, our experiments show that BitNet b1.58 can match full precision (i.e., FP16) baselines in terms of both perplexity and end-task performance, starting from a 3B size, when using the same configuration (e.g., model size, training tokens, etc.).",
+    "char_count": 1773,
+    "created_at": "2026-11-12T16:50:36.918242"
+  },
+  {
+    "id": "g002",
+    "owner_id": "6af5966226b4d5644f5d26d0",
+    "query": "In Linux, which symbol is used to represent the parent of the present working directory?",
+    "ideal_context": "| Symbol | Represents path to | |----------|-------------------------------------| | ~ | home directory | | / | root directory | | . | present working directory | | .. | parent of present working directory | List files and directories in the current directory: None None None None None None ls",
+    "chunk_id": 3,
+    "document_id": "61135bbf-c8b6-4196-bbf6-ba5ad602ea1d",
+    "version": 1,
+    "paper_title": "Module 1 Cheat Sheet - Introduction to Linux",
+    "section": "Special paths",
+    "page_start": 1,
+    "page_end": 1,
+    "source_file": "parsed_papers\\4c56edf2-507e-4d75-98c6-2eba0db920d2.md",
+    "text": "| Symbol | Represents path to | |----------|-------------------------------------| | ~ | home directory | | / | root directory | | . | present working directory | | .. | parent of present working directory | List files and directories in the current directory: None None None None None None ls",
+    "char_count": 293,
+    "created_at": "2026-11-13T12:42:51.624182"
+  }
+]
