@@ -227,7 +227,11 @@ The app supports signup and login via FastAPI routes in `api/auth.py` and `api/a
 - Login returns a JWT access token
 - Protected routes use `Depends(get_current_user)`
 
+![JWT Authentication Flow](./assets/jwt-auth-flow.png)
+
 ### 2. Document Ingestion Pipeline
+
+![Stateful Ingestion Workflow](./assets/stateful-ingestion-workflow.png)
 
 The ingestion workflow in `graphs/ingestion_graphs.py` runs these nodes:
 
@@ -252,6 +256,10 @@ The retriever uses `services/hybrid_search_service.py` to perform:
 All results are filtered to the authenticated user’s documents and paper versions.
 
 ### 4. Multi-Agent Research Workflow
+
+![LangGraph Research Agent Workflow](./assets/langgraph-research-agent-workflow.png)
+
+![Orchestrator Agent Routing Flowchart](./assets/orchestrator-routing-flowchart.png)
 
 The research graph in `graphs/research_graphs.py` orchestrates these agents:
 
