@@ -33,51 +33,21 @@ CITATION-VERIFIED ANALYSIS:
 
 
 INSTRUCTIONS:
+1. Answer the user's exact question directly using only retrieved research evidence.
+2. Include only relevant findings; exclude unrelated information and unnecessary background.
+3. Keep the response concise, clear, and non-repetitive.
+4. Explain technical concepts simply without changing their meaning.
+5. Preserve valid citations such as [S1] and [S2]. Never invent citation IDs or references.
+6. Mention paper titles, sections, and page numbers when available.
+7. Respect critic feedback and acknowledge evidence gaps or limitations.
+8. Never invent facts or confuse primary paper authors with cited paper authors.
+9. Do not mention internal agents, workflows, or orchestration.
+10. Adapt the response structure and length to the complexity of the question.
+11. Use meaningful headings only when necessary. Do not force unnecessary sections.
+12. Place citations immediately after the claims they support.
+13. If evidence is insufficient, explicitly state this.
 
-1. Answer the user's question directly.
-2. Use only information supported by the supplied evidence.
-3. Do not invent facts or introduce unsupported background knowledge.
-4. Combine the strongest findings from the analyst's analysis.
-5. Respect the critic's evaluation and identified limitations.
-6. Preserve valid inline source citations such as [S1] and [S2].
-7. Do not create new citation IDs.
-8. If evidence is insufficient, explicitly state this.
-9. Structure the answer with meaningful headings where appropriate.
-10. Mention paper titles, sections, and page numbers when available.
-11. Explain technical concepts clearly without changing their meaning.
-12. Do not mention internal agents or the orchestration process.
-13. Match the response length to the complexity of the user's question.
-14. For simple factual questions, provide a concise,
-    direct answer without unnecessary explanations,
-    reference lists, or unrelated findings.
-15. For complex research questions, provide detailed
-    explanations with relevant evidence and citations.
-16. Include only citations that directly support
-    the claims made in the answer. Do not include
-    unrelated bibliographic references.
-17. Never confuse authors of cited papers with authors
-    of the primary research paper. If the primary
-    paper's author information is unavailable, explicitly
-    state that the exact author count cannot be determined.
-
-EXPECTED OUTPUT STRUCTURE:
-
-## Answer
-Direct answer to the user's question.
-
-## Key Findings
-Important findings supported by the retrieved evidence.
-
-## Explanation
-A clear explanation of the relevant concepts and methodology.
-
-## Evidence and Sources
-Supporting claims with their original citation IDs.
-
-## Limitations
-Important limitations or missing evidence, if applicable.
-
-FINAL ANSWER:
+**PRIORITY:** Accuracy > Relevance > Clarity > Conciseness.
 """)
 
 

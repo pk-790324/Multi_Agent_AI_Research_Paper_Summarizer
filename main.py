@@ -280,7 +280,6 @@ def run_research_pipeline(user_query: str, current_user):
             "",
             "",
             [],
-            [],
             "Pipeline Progress: 0/6 agents completed"
         )
         return
@@ -298,7 +297,6 @@ def run_research_pipeline(user_query: str, current_user):
             "",
             "",
             "",
-            [],
             [],
             "Pipeline Progress: 0/6 agents completed"
         )
@@ -366,8 +364,6 @@ def run_research_pipeline(user_query: str, current_user):
                     ""
                 )
 
-                citations = event.get("citations", [])
-
                 dashboard = event.get(
                     "agent_dashboard",
                     []
@@ -390,7 +386,6 @@ def run_research_pipeline(user_query: str, current_user):
                     analysis,
                     critical_analysis,
                     cited_analysis,
-                    citations,
                     dashboard,
                     progress,
                     #logs
@@ -408,7 +403,6 @@ def run_research_pipeline(user_query: str, current_user):
             "",
             "",
             [],
-            [],
             "Pipeline failed"
         )
 
@@ -425,7 +419,6 @@ def run_research_pipeline(user_query: str, current_user):
             "",
             "",
             "",
-            [],
             [],
             "Pipeline failed"
         )
@@ -512,8 +505,6 @@ def run_retriever_evaluation(current_user):
 # =========================================================
 # GENERATOR EVALUATION CODE
 # =========================================================
-
-
 import requests
 
 
@@ -681,45 +672,6 @@ def run_generator_evaluation_pipeline(current_user):
             "❌ **Error occurred.**",
             f"```text\n{exc}\n```",
         )
-        # =====================================
-        # STEP 3: MULTI-AGENT GENERATION
-        # =====================================
-
-        yield (
-            "✅ **Golden generation completed.**",
-            f"✅ **{len(goldens)} golden test cases validated.**",
-            "🔄 **Executing Analyst → Critical Analyst → Citation Agent → Synthesizer...**",
-            "⏳ Waiting for DeepEval...",
-            ""
-        )
-
-        # =====================================
-        # STEP 4: GENERATOR + DEEPEVAL
-        # =====================================
-
-        result = run_generator_evaluation()
-
-        yield (
-            "✅ **Golden generation completed.**",
-            f"✅ **{len(goldens)} golden test cases validated.**",
-            "✅ **Multi-agent generation completed.**",
-            "🔄 **Evaluating Faithfulness and Answer Relevancy...**",
-            ""
-        )
-
-        # =====================================
-        # STEP 5: FORMAT RESULTS
-        # =====================================
-
-        report = format_generator_report(result)
-
-        yield (
-            "✅ **Golden generation completed.**",
-            f"✅ **{len(goldens)} golden test cases validated.**",
-            "✅ **Multi-agent generation completed.**",
-            "✅ **Generator evaluation completed!**",
-            report
-        )
 
     except Exception as e:
 
@@ -778,35 +730,112 @@ def navigate(page):
     ]
 
 
+def get_sidebar_user_name(user):
+    name = user.get("name") if isinstance(user, dict) else None
+    label = f"◉  {name}" if isinstance(name, str) and name else "◉ Profile"
+    return gr.update(label=label)
+
+
 # =========================================================
 # CUSTOM CSS
 # =========================================================
 
 CSS = """
-.gradio-container {
-    max-width: 1480px !important;
-    padding: 20px !important;
+:root {
+    --indigo-950: #1e1b4b;
+    --indigo-900: #312e81;
+    --indigo-800: #3730a3;
+    --indigo-700: #4338ca;
+    --indigo-600: #4f46e5;
+    --indigo-500: #6366f1;
+    --indigo-400: #818cf8;
+    --indigo-300: #a5b4fc;
+    --indigo-200: #c7d2fe;
+    --indigo-100: #e0e7ff;
+    --indigo-50: #eef2ff;
+    --page-bg: #f5f5ff;
+    --muted-text: #625f89;
 }
 
-#app-header {
-    margin-bottom: 18px;
-    padding: 18px 22px;
-    border: 1px solid var(--border-color-primary);
-    border-radius: 18px;
-    background: var(--background-fill-secondary);
-    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+body {
+    background: var(--page-bg) !important;
+}
+
+.gradio-container {
+    max-width: 1600px !important;
+    min-height: 100vh;
+    padding: 24px !important;
+    background: transparent !important;
+}
+
+#protected-app {
+    min-height: calc(100vh - 48px);
+}
+
+#workspace-layout {
+    align-items: stretch;
+    flex-wrap: nowrap !important;
+    gap: 20px;
 }
 
 #sidebar {
+    display: flex !important;
+    flex-direction: column !important;
+    flex-wrap: nowrap !important;
+    align-items: stretch !important;
     position: sticky;
-    top: 12px;
-    height: calc(100vh - 30px);
-    overflow-y: auto;
-    padding: 20px 16px;
-    border: 1px solid var(--border-color-primary);
-    border-radius: 18px;
-    background: var(--background-fill-secondary);
-    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+    top: 20px;
+    box-sizing: border-box;
+    flex: 0 0 258px !important;
+    height: calc(100vh - 48px);
+    max-height: calc(100vh - 48px);
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: scroll !important;
+    gap: 4px;
+    padding: 20px 14px 14px;
+    border: 1px solid var(--indigo-900);
+    border-radius: 20px;
+    background: var(--indigo-950) !important;
+    box-shadow: 0 18px 42px rgba(49, 46, 129, 0.16);
+    color: var(--indigo-50);
+}
+
+#sidebar > * {
+    box-sizing: border-box;
+    flex: 0 0 auto;
+    width: 100%;
+}
+
+#sidebar-brand {
+    margin: 0 4px 12px;
+    padding: 2px 8px 10px;
+    color: #ffffff;
+}
+
+#sidebar-brand h2,
+#sidebar-brand h3 {
+    margin: 0 0 5px;
+    color: #ffffff;
+    font-size: 1.15rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+#sidebar-brand p {
+    margin: 0;
+    color: var(--indigo-300);
+    font-size: 0.72rem;
+    font-weight: 650;
+    letter-spacing: 0.12em;
+}
+
+.sidebar-section-label {
+    margin: 12px 8px 4px;
+    color: var(--indigo-300);
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.13em;
 }
 
 #sidebar button {
@@ -814,34 +843,144 @@ CSS = """
     justify-content: flex-start;
     text-align: left;
     width: 100%;
-    min-height: 46px;
-    padding: 0 14px;
-    border-radius: 12px;
-    font-weight: 600;
-    transition: background-color 160ms ease, transform 160ms ease;
+    min-height: 42px;
+    padding: 0 12px;
+    border: 1px solid transparent !important;
+    border-radius: 11px;
+    background: transparent !important;
+    box-shadow: none !important;
+    color: var(--indigo-200) !important;
+    font-weight: 550;
+    transition: background-color 160ms ease, color 160ms ease, transform 160ms ease;
 }
 
 #sidebar button:hover {
     transform: translateX(2px);
+    background: var(--indigo-900) !important;
+    color: #ffffff !important;
+}
+
+#sidebar button.primary {
+    min-height: 46px;
+    margin-bottom: 8px;
+    border-color: var(--indigo-100) !important;
+    background: var(--indigo-50) !important;
+    color: var(--indigo-900) !important;
+    font-weight: 700;
+}
+
+#sidebar button.primary:hover {
+    background: #ffffff !important;
+    color: var(--indigo-950) !important;
+}
+
+#sidebar-bottom {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: auto;
+    padding-top: 16px;
+    border-top: 1px solid var(--indigo-900);
+}
+
+#sidebar #user-profile,
+#sidebar #user-profile > .wrap {
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 8px;
+}
+
+#sidebar #user-profile .label-wrap {
+    min-height: 48px;
+    align-items: center;
+    padding: 0 12px;
+    border-radius: 12px;
+    background: var(--indigo-900) !important;
+    color: #ffffff !important;
+    transition: background-color 160ms ease;
+}
+
+#sidebar #user-profile .label-wrap:hover {
+    background: var(--indigo-800) !important;
+}
+
+#sidebar #user-profile .label-wrap span {
+    color: #ffffff !important;
+    font-weight: 650;
+}
+
+#sidebar #user-profile .label-wrap:focus-visible {
+    outline: 3px solid var(--indigo-400);
+    outline-offset: 2px;
+}
+
+#sidebar #user-profile > .wrap > :not(.label-wrap) {
+    padding: 8px;
+    border: 1px solid var(--indigo-800);
+    border-radius: 14px;
+    background: var(--indigo-900) !important;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.3);
+}
+
+#sidebar #user-profile #logout-button button {
+    transform: none !important;
+    border-radius: 9px;
+    color: var(--indigo-100) !important;
+}
+
+#sidebar #user-profile #logout-button button:hover {
+    transform: none !important;
+    background: var(--indigo-800) !important;
+    color: #ffffff !important;
 }
 
 #sidebar button:focus-visible,
 #main-content button:focus-visible {
-    outline: 3px solid #93c5fd;
+    outline: 3px solid var(--indigo-400);
     outline-offset: 2px;
 }
 
 #main-content {
     min-width: 0;
-    padding: 8px 18px 24px;
+    flex: 1 1 0 !important;
+    padding: 8px 14px 28px;
+    color: var(--indigo-950);
+}
+
+#main-content h1,
+#main-content h2,
+#main-content h3 {
+    color: var(--indigo-950);
+    letter-spacing: -0.03em;
+}
+
+#main-content h1 {
+    font-size: clamp(1.7rem, 3vw, 2.25rem);
+}
+
+#main-content p {
+    color: var(--muted-text);
+    line-height: 1.65;
+}
+
+#main-content input,
+#main-content textarea,
+#main-content select {
+    border-radius: 11px !important;
+}
+
+#main-content input:focus,
+#main-content textarea:focus {
+    border-color: var(--indigo-500) !important;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15) !important;
 }
 
 #main-content button {
     min-height: 44px;
-    padding: 0 18px;
-    border-radius: 12px;
-    font-weight: 600;
-    transition: background-color 160ms ease, transform 160ms ease;
+    padding: 0 17px;
+    border-radius: 11px;
+    font-weight: 650;
+    transition: background-color 160ms ease, border-color 160ms ease, transform 160ms ease;
 }
 
 #main-content button:hover {
@@ -849,48 +988,51 @@ CSS = """
 }
 
 .gradio-container button.primary {
-    background: #2563eb;
-    border-color: #2563eb;
+    background: var(--indigo-600);
+    border-color: var(--indigo-600);
     color: #ffffff;
 }
 
 .gradio-container button.primary:hover {
-    background: #1d4ed8;
-    border-color: #1d4ed8;
+    background: var(--indigo-700);
+    border-color: var(--indigo-700);
 }
 
 .feature-card {
     height: 100%;
-    padding: 20px;
-    border: 1px solid var(--border-color-primary);
+    padding: 22px;
+    border: 1px solid var(--indigo-100);
     border-radius: 18px;
-    background: var(--background-fill-secondary);
-    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+    background: #ffffff;
+    box-shadow: 0 10px 28px rgba(49, 46, 129, 0.07);
+}
+
+.feature-card h3 {
+    margin-top: 2px;
+    color: var(--indigo-950);
 }
 
 .page-title {
-    margin-bottom: 6px;
+    margin-bottom: 8px;
 }
 
 .muted {
-    color: var(--body-text-color-subdued);
+    color: var(--muted-text);
 }
 
 .status-box textarea {
     font-family: monospace !important;
+    line-height: 1.55;
 }
 
 #auth-page {
     display: flex;
     align-items: center;
     justify-content: center;
-    min-height: calc(100vh - 40px);
-    padding: 24px;
-    border-radius: 24px;
-    background:
-        radial-gradient(ellipse at 15% 15%, rgba(147, 197, 253, 0.3), transparent 38%),
-        radial-gradient(ellipse at 85% 85%, rgba(196, 181, 253, 0.28), transparent 40%),
-        linear-gradient(135deg, #f8fafc, #eff6ff);
+    min-height: calc(100vh - 48px);
+    padding: 28px;
+    border-radius: 26px;
+    background: var(--indigo-50);
 }
 
 #auth-page.hide {
@@ -902,66 +1044,81 @@ CSS = """
     width: 100%;
     max-width: 480px;
     margin: auto;
-    padding: 36px;
-    border: 1px solid rgba(148, 163, 184, 0.3);
+    padding: 38px;
+    border: 1px solid var(--indigo-200);
     border-radius: 24px;
-    background: rgba(255, 255, 255, 0.94);
-    box-shadow: 0 24px 64px rgba(30, 64, 175, 0.14);
+    background: #ffffff;
+    box-shadow: 0 28px 80px rgba(49, 46, 129, 0.12);
+}
+
+#auth-card h1 {
+    margin-bottom: 8px;
+    color: var(--indigo-950);
+    letter-spacing: -0.04em;
+}
+
+#auth-card p {
+    color: var(--muted-text);
+    line-height: 1.6;
 }
 
 #auth-card input,
 #auth-card textarea {
-    border-radius: 12px;
+    border-radius: 11px;
 }
 
 #auth-card button.primary {
     border: 0;
-    background: linear-gradient(110deg, #2563eb, #7c3aed);
+    background: var(--indigo-600);
     color: #ffffff;
 }
 
 #auth-card button.primary:hover {
-    background: linear-gradient(110deg, #1d4ed8, #6d28d9);
+    background: var(--indigo-700);
 }
 
 #auth-card [role="tab"] {
-    font-weight: 600;
+    font-weight: 650;
 }
 
-@media (max-width: 800px) {
+@media (max-width: 900px) {
     .gradio-container {
-        padding: 12px !important;
+        padding: 14px !important;
     }
 
     #auth-page {
-        min-height: calc(100vh - 24px);
-        padding: 12px;
+        min-height: calc(100vh - 28px);
+        padding: 14px;
     }
 
     #auth-card {
-        padding: 28px 22px;
+        padding: 30px 24px;
     }
 
-    .gradio-container .row {
+    #workspace-layout {
+        flex-direction: column !important;
         flex-wrap: wrap !important;
     }
 
     #sidebar {
         position: static;
-        height: auto;
-        max-height: none;
+        height: calc(100vh - 28px);
+        min-height: 0;
+        max-height: calc(100vh - 28px);
         margin-bottom: 12px;
+        flex-basis: auto !important;
+        overflow-x: hidden;
+        overflow-y: scroll !important;
     }
 
     #main-content {
         padding: 8px 4px 20px;
     }
 
-    #app-header {
-        padding: 16px;
+    .gradio-container .row {
+        flex-wrap: wrap !important;
     }
 }
-
 """
 
 # =========================================================
@@ -970,8 +1127,6 @@ CSS = """
 
 with gr.Blocks(
     title="Research Paper AI Assistant",
-    theme=gr.themes.Soft(),
-    css=CSS,
 ) as demo:
     # Session state
     current_user = gr.State(value=None)
@@ -980,7 +1135,7 @@ with gr.Blocks(
     # =========================
     with gr.Column(visible=True, elem_id="auth-page") as auth_page:
         with gr.Column(elem_id="auth-card"):
-            gr.Markdown("# 📚 Research Paper Summarizer")
+            gr.Markdown("# ◈ Research Paper Summarizer")
             gr.Markdown("Sign in or create an account to continue to your research workspace.")
 
             with gr.Tabs() as auth_tabs:
@@ -1024,14 +1179,8 @@ with gr.Blocks(
                     )
 
             auth_status = gr.Markdown()
-    with gr.Column(visible=False) as protected_app:
-        gr.Markdown(
-            "# 🧠 Research Paper AI Assistant\n"
-            "Your workspace for research document processing and AI analysis.",
-            elem_id="app-header",
-        )
-
-        with gr.Row(equal_height=False):
+    with gr.Column(visible=False, elem_id="protected-app") as protected_app:
+        with gr.Row(equal_height=False, elem_id="workspace-layout"):
 
             # -------------------------------------------------
             # LEFT SIDEBAR: stays visible across all pages
@@ -1042,55 +1191,69 @@ with gr.Blocks(
                 min_width=230,
                 elem_id="sidebar",
             ):
-                gr.Markdown("## 📚 Research AI")
-                gr.Markdown("**WORKSPACE**")
-
-                home_btn = gr.Button(
-                    "🏠  Home",
-                    variant="secondary",
+                gr.Markdown(
+                    "## ◈ Research AI\n"
+                    "<p>RESEARCH WORKSPACE</p>",
+                    elem_id="sidebar-brand",
                 )
 
+                home_btn = gr.Button(
+                    "⌂  Home",
+                    variant="primary",
+                    elem_id="home-nav",
+                )
+
+                gr.Markdown("LIBRARY", elem_classes=["sidebar-section-label"])
+
                 ingestion_btn = gr.Button(
-                    "📄  Data Ingestion Pipeline",
+                    "▤  Document ingestion",
+                    elem_id="ingestion-nav",
                 )
 
                 agents_btn = gr.Button(
-                    "🤖  Multi-Agent Pipeline",
+                    "✦  Research workspace",
+                    elem_id="research-nav",
                 )
 
                 papers_btn = gr.Button(
-                    "📚  Research Papers",
+                    "▧  Research papers",
+                    elem_id="papers-nav",
                 )
                 
+                gr.Markdown("EVALUATION", elem_classes=["sidebar-section-label"])
+
                 retriever_btn=gr.Button(
-                    "Retriever Evaluation",
+                    "⌕  Retriever",
+                    elem_id="retriever-nav",
                 )
                 generator_btn=gr.Button(
-                    "Generator Evaluation",
+                    "◉  Generator",
+                    elem_id="generator-nav",
                 )
                 
                 rag_evaluation_pipeline_btn=gr.Button(
-                    "Rag Pipeline Evaluation",
-                    
+                    "⤳  RAG pipeline",
+                    elem_id="rag-nav",
                 )
+
+                gr.Markdown("PREFERENCES", elem_classes=["sidebar-section-label"])
 
                 settings_btn = gr.Button(
-                    "⚙️  Settings",
-                )
-                
-               
-                
-                # Add logout button
-
-                logout_button = gr.Button(
-                    "Logout",
-                    variant="stop"
+                    "⚙  Settings",
+                    elem_id="settings-nav",
                 )
 
-                gr.Markdown(
-                    "---\n"
-                    "<small>Research Paper Summarizer</small>"
-                )
+                with gr.Column(elem_id="sidebar-bottom"):
+                    with gr.Accordion(
+                        "◉ Profile",
+                        open=False,
+                        elem_id="user-profile",
+                    ) as user_profile:
+                        logout_button = gr.Button(
+                            "↪  Log out",
+                            variant="secondary",
+                            elem_id="logout-button",
+                        )
 
             # -------------------------------------------------
             # RIGHT CONTENT: page panels
@@ -1102,68 +1265,97 @@ with gr.Blocks(
             ):
 
                 # =========================
-                # PAGE 1: HOME
+                # PAGE 0: HOME
                 # =========================
 
                 with gr.Column(visible=True) as home_page:
                     gr.Markdown(
-                        "# Welcome to Research Paper AI",
+                        "# ◈ Research Paper AI Assistant",
                         elem_classes=["page-title"],
                     )
-
                     gr.Markdown(
-                        "Process research papers, inspect extracted content, "
-                        "and prepare documents for multi-agent analysis."
+                        "A multi-agent system that ingests research papers, "
+                        "generates embeddings, retrieves evidence, and produces "
+                        "cited research reports — with built-in evaluation."
                     )
 
-                    with gr.Row():
+                    # Row 1: Core pipeline
+                    with gr.Row(equal_height=True):
                         with gr.Column(elem_classes=["feature-card"]):
                             gr.Markdown(
-                                "### 📄 Data Ingestion\n"
-                                "Validate and parse documents, split text "
-                                "into chunks, and generate embeddings."
+                                "### 📄 Data Ingestion Pipeline\n"
+                                "Upload PDF / DOCX / TXT research papers. "
+                                "The LangGraph pipeline validates, parses to Markdown, "
+                                "chunks the text, and generates vector embeddings — "
+                                "all in a single streaming workflow."
                             )
-
-                            home_ingestion_btn = gr.Button(
-                                "Open Data Ingestion →",
-                                variant="primary",
-                            )
-
                         with gr.Column(elem_classes=["feature-card"]):
                             gr.Markdown(
                                 "### 🤖 Multi-Agent Research\n"
-                                "A dedicated workspace for future research "
-                                "summarization and critical analysis agents."
+                                "Ask a question and six specialised agents collaborate: "
+                                "**Orchestrator → Retriever → Research Analyst → "
+                                "Critical Analyst → Citation Agent → Synthesis Writer** "
+                                "to deliver an evidence-based research report."
                             )
 
-                            home_agents_btn = gr.Button(
-                                "Open Multi-Agent Pipeline →"
+                    # Row 2: Papers + Retrieval
+                    with gr.Row(equal_height=True):
+                        with gr.Column(elem_classes=["feature-card"]):
+                            gr.Markdown(
+                                "### 📚 Research Papers Library\n"
+                                "Browse every paper you have uploaded. "
+                                "Track multiple versions of each document and "
+                                "see which version is currently active."
+                            )
+                        with gr.Column(elem_classes=["feature-card"]):
+                            gr.Markdown(
+                                "### 🔍 Hybrid Retrieval (Dense + Sparse + RRF)\n"
+                                "Combines dense vector search, sparse BM25, "
+                                "and Reciprocal Rank Fusion with a cross-encoder "
+                                "re-ranker for high-precision chunk retrieval."
                             )
 
-                    gr.Markdown("## Pipeline Overview")
+                    # Row 3: Evaluations
+                    with gr.Row(equal_height=True):
+                        with gr.Column(elem_classes=["feature-card"]):
+                            gr.Markdown(
+                                "### 📊 Retriever Evaluation\n"
+                                "Auto-generates a golden dataset, runs hybrid "
+                                "retrieval, and scores results with **DeepEval** "
+                                "metrics (Contextual Precision, Recall, Relevancy)."
+                            )
+                        with gr.Column(elem_classes=["feature-card"]):
+                            gr.Markdown(
+                                "### 📊 Generator Evaluation\n"
+                                "Builds faithfulness test cases, runs the full "
+                                "multi-agent pipeline, and evaluates answers with "
+                                "**Faithfulness** and **Answer Relevancy** metrics."
+                            )
 
-                    gr.Markdown(
-                        "| Stage | Purpose | Status |\n"
-                        "|---|---|---|\n"
-                        "| Upload | Validate and save the document | Ready |\n"
-                        "| Parsing | Convert document to Markdown | Ready |\n"
-                        "| Chunking | Split Markdown into chunks | Ready |\n"
-                        "| Embeddings | Generate vector representations | Ready |\n"
-                        "| Multi-Agent | Summarize and analyze research | Ready |"
-                    )
-
-                    gr.Markdown(
-                        "*The overview describes available pipeline stages; "
-                        "it does not indicate that a pipeline has run.*",
-                        elem_classes=["muted"],
-                    )
+                    # Row 4: End-to-end + Tech
+                    with gr.Row(equal_height=True):
+                        with gr.Column(elem_classes=["feature-card"]):
+                            gr.Markdown(
+                                "### ⚡ End-to-End RAG Evaluation\n"
+                                "Combines retriever and generator evaluations into "
+                                "a single pipeline — golden generation, live retrieval, "
+                                "multi-agent answering, and DeepEval scoring."
+                            )
+                        with gr.Column(elem_classes=["feature-card"]):
+                            gr.Markdown(
+                                "### 🛠️ Tech Stack\n"
+                                "**LangGraph** orchestration · **FastAPI** backend · "
+                                "**Gradio** UI · **Qdrant** vector store · "
+                                "**DeepEval** evaluation · **Google Gemini** LLM · "
+                                "SSE streaming for real-time progress."
+                            )
 
                 # =========================
-                # PAGE 2: DATA INGESTION
+                # PAGE 1: DATA INGESTION
                 # =========================
 
                 with gr.Column(visible=False) as ingestion_page:
-                    gr.Markdown("# 📄 Data Ingestion Pipeline")
+                    gr.Markdown("# Data Ingestion Pipeline")
 
                     gr.Markdown(
                         "Upload a research document and monitor each stage "
@@ -1240,20 +1432,17 @@ with gr.Blocks(
 
                 with gr.Column(visible=False) as agents_page:
                     gr.Markdown(
-                        """
-                        # 🤖 Multi-Agent Research Workspace
-
-                        Ask questions about your indexed research papers.
-                        Multiple AI agents will collaborate to generate
-                        an evidence-based research report.
-                        """
+                        "# Multi-Agent Research Workspace\n\n"
+                        "Ask questions about your indexed research papers. "
+                        "Multiple AI agents will collaborate to generate "
+                        "an evidence-based research report."
                     )
 
                     # --------------------------------
                     # RESEARCH QUESTION
                     # --------------------------------
 
-                    gr.Markdown("## 🔍 Research Question")
+                    gr.Markdown("## Research Question")
 
                     query_input = gr.Textbox(
                         label="Enter your research question",
@@ -1264,135 +1453,116 @@ with gr.Blocks(
                         lines=3
                     )
 
-                    run_button = gr.Button(
-                        "🚀 Run Research Pipeline",
+                    research_run_button = gr.Button(
+                        "Run Research Pipeline",
                         variant="primary"
                     )
 
-                    
-                    # --------------------------------
-                    # LIVE EXECUTION TRACE
-                    # --------------------------------
+                    with gr.Accordion("Details", open=False):
+                        # --------------------------------
+                        # LIVE EXECUTION TRACE
+                        # --------------------------------
 
-                    gr.Markdown("---")
-                    gr.Markdown("## ⚡ Agent Execution Monitor")
+                        gr.Markdown("---")
+                        gr.Markdown("## Agent Execution Monitor")
 
-                    pipeline_progress = gr.Markdown(
-                        "**Progress:** Waiting to start"
-                    )
+                        pipeline_progress = gr.Markdown(
+                            "**Progress:** Waiting to start"
+                        )
 
-                    execution_trace = gr.Dataframe(
-                        headers=[
-                            "Step",
-                            "Agent",
-                            "Status",
-                            "Executions"
-                        ],
-                        datatype=[
-                            "number",
-                            "str",
-                            "str",
-                            "number"
-                        ],
-                        value=[
-                            [1, "Orchestrator", "Waiting", 0],
-                            [2, "Retriever", "Waiting", 0],
-                            [3, "Research Analyst", "Waiting", 0],
-                            [4, "Critical Analyst", "Waiting", 0],
-                            [5, "Citation Agent", "Waiting", 0],
-                            [6, "Synthesis Writer", "Waiting", 0],
-                        ],
-                        interactive=False,
-                        wrap=True,
-                        label="Agent Execution Status"
-                    )
+                        execution_trace = gr.Dataframe(
+                            headers=[
+                                "Step",
+                                "Agent",
+                                "Status",
+                                "Executions"
+                            ],
+                            datatype=[
+                                "number",
+                                "str",
+                                "str",
+                                "number"
+                            ],
+                            value=[
+                                [1, "Orchestrator", "Waiting", 0],
+                                [2, "Retriever", "Waiting", 0],
+                                [3, "Research Analyst", "Waiting", 0],
+                                [4, "Critical Analyst", "Waiting", 0],
+                                [5, "Citation Agent", "Waiting", 0],
+                                [6, "Synthesis Writer", "Waiting", 0],
+                            ],
+                            interactive=False,
+                            wrap=True,
+                            label="Agent Execution Status"
+                        )
 
-                    
+                        # --------------------------------
+                        # INDIVIDUAL AGENT OUTPUTS
+                        # --------------------------------
 
-                    # --------------------------------
-                    # INDIVIDUAL AGENT OUTPUTS
-                    # --------------------------------
+                        gr.Markdown("---")
+                        gr.Markdown("## Dense + Sparse + RRF + Encoder")
+                        with gr.Accordion("Retrieved Chunks", open=False):
+                            retrieved_chunks = gr.Markdown()
 
-                    gr.Markdown("---")
-                    gr.Markdown("## 🧠 Dense + Sparse + RRF + Encoder")
-                    with gr.Accordion("Retrieved Chunks", open=False):
-                        retrieved_chunks = gr.Markdown()
-                    
-                    gr.Markdown("## 🧠 Agent Analysis")
+                        gr.Markdown("## Agent Analysis")
 
-                    with gr.Accordion("1. Research Analyst", open=False):
-                        analysis_output = gr.Markdown()
+                        with gr.Accordion("1. Research Analyst", open=False):
+                            analysis_output = gr.Markdown()
 
-                    with gr.Accordion("2. Critical Analyst", open=False):
-                        critical_output = gr.Markdown()
+                        with gr.Accordion("2. Critical Analyst", open=False):
+                            critical_output = gr.Markdown()
 
-                    with gr.Accordion("3. Citation Agent", open=False):
-                        cited_analysis_output = gr.Markdown()
+                        with gr.Accordion("3. Citation Agent", open=False):
+                            cited_analysis_output = gr.Markdown()
 
-                    # --------------------------------
-                    # REFERENCES
-                    # --------------------------------
-
-                    gr.Markdown("---")
-                    gr.Markdown("## 📚 Research References")
-
-                    citations_output = gr.JSON(
-                        label="Verified Citation Records"
-                    )
-                    
                     # --------------------------------
                     # PIPELINE STATUS
                     # --------------------------------
 
-                    pipeline_status = gr.Markdown(
-                        "Waiting for your research question..."
-                    )
-                    
+                    pipeline_status = gr.Markdown()
+
                     # --------------------------------
                     # FINAL ANSWER
                     # --------------------------------
 
                     gr.Markdown("---")
-                    gr.Markdown("## 📄 Final Research Report")
+                    gr.Markdown("## Final Research Report")
 
                     final_answer = gr.Markdown()
-
 
                     # --------------------------------
                     # PIPELINE EXECUTION
                     # --------------------------------
 
-                    run_button.click(
-                    fn=run_research_pipeline,
-                    inputs=[query_input, current_user],
-                    outputs=[
-                        pipeline_status,
-                        final_answer,
-                        retrieved_chunks,
-                        analysis_output,
-                        critical_output,
-                        cited_analysis_output,
-                        citations_output,
-                        execution_trace,
-                        pipeline_progress,
-                        #execution_log
-                    ]
-                )
-
+                    research_run_button.click(
+                        fn=run_research_pipeline,
+                        inputs=[query_input, current_user],
+                        outputs=[
+                            pipeline_status,
+                            final_answer,
+                            retrieved_chunks,
+                            analysis_output,
+                            critical_output,
+                            cited_analysis_output,
+                            execution_trace,
+                            pipeline_progress,
+                        ]
+                    )
 
                 # =========================
                 # PAGE 4: RESEARCH PAPERS
                 # =========================
 
                 with gr.Column(visible=False) as papers_page:
-                    gr.Markdown("# 📚 Research Papers")
+                    gr.Markdown("# Research Papers")
 
                     gr.Markdown(
                         "Documents saved by your existing upload service."
                     )
 
                     refresh_papers_btn = gr.Button(
-                        "🔄 Refresh Paper List"
+                        "Refresh Paper List"
                     )
 
                     papers_output = gr.Markdown(
@@ -1413,14 +1583,10 @@ with gr.Blocks(
                     with gr.Group():
 
                         gr.Markdown(
-                            """
-                            # 🔬 Retriever Evaluation Dashboard
-
-                            Evaluate Hybrid Retrieval using DeepEval.
-
-                            **Pipeline:** Golden Generation → Dataset Validation
-                            → Hybrid Retrieval → DeepEval → Results
-                            """
+                            "# Retriever Evaluation Dashboard\n\n"
+                            "Evaluate Hybrid Retrieval using DeepEval.\n\n"
+                            "**Pipeline:** Golden Generation → Dataset Validation "
+                            "→ Hybrid Retrieval → DeepEval → Results"
                         )
 
                         run_eval_btn = gr.Button(
@@ -1476,22 +1642,19 @@ with gr.Blocks(
                                 evaluation_output
                             ]
                         )
+
                 # =========================
                 # PAGE 6: GENERATOR EVALUATION PAGE
                 # =========================
-                
+
                 with gr.Column(visible=False) as generator_evaluation_page:
                     with gr.Group():
                         gr.Markdown(
-                            """
-                            # 🧠 Generator Evaluation Dashboard
-
-                            Evaluate multi-agent answer generation using DeepEval.
-
-                            **Pipeline:** Golden Generation → Validation
-                            → Multi-Agent Generation → Faithfulness
-                            → Answer Relevancy
-                            """
+                            "# Generator Evaluation Dashboard\n\n"
+                            "Evaluate multi-agent answer generation using DeepEval.\n\n"
+                            "**Pipeline:** Golden Generation → Validation "
+                            "→ Multi-Agent Generation → Faithfulness "
+                            "→ Answer Relevancy"
                         )
 
                         run_generator_btn = gr.Button(
@@ -1549,26 +1712,21 @@ with gr.Blocks(
                             ]
                         )
 
-                    
-                    
-                                
                 # =========================
                 # PAGE 7: RAG EVALUATION PIPELINE
                 # =========================
+
                 with gr.Column(visible=False) as rag_evaluation_pipeline_page:
                     with gr.Group():
 
                         gr.Markdown(
-                            """
-                            # End-to-End RAG Pipeline Evaluation
-
-                            Evaluate live hybrid retrieval and multi-agent generation
-                            using DeepEval metrics.
-                            """
+                            "# End-to-End RAG Pipeline Evaluation\n\n"
+                            "Evaluate live hybrid retrieval and multi-agent generation "
+                            "using DeepEval metrics."
                         )
 
                         run_rag_btn = gr.Button(
-                            "🚀 Run RAG Pipeline Evaluation",
+                            "Run RAG Pipeline Evaluation",
                             variant="primary"
                         )
 
@@ -1618,12 +1776,10 @@ with gr.Blocks(
                             ],
                         )
 
-
-                
                 # =========================
                 # PAGE 8: SETTINGS
                 # =========================
-                
+
                 with gr.Column(visible=False) as settings_page:
                     gr.Markdown("# ⚙️ Settings")
 
@@ -1650,8 +1806,6 @@ with gr.Blocks(
             generator_evaluation_page,
             rag_evaluation_pipeline_page,
             settings_page,
-            
-           
         ]
 
         home_btn.click(
@@ -1694,19 +1848,6 @@ with gr.Blocks(
             outputs=page_outputs,
         )
         
-       
-
-        # Quick links from the Home page.
-        home_ingestion_btn.click(
-            fn=lambda: navigate("Data Ingestion Pipeline"),
-            outputs=page_outputs,
-        )
-
-        home_agents_btn.click(
-            fn=lambda: navigate("Multi-Agent Pipeline"),
-            outputs=page_outputs,
-        )
-        
       # ==================================
     # EVENT HANDLERS
     # ==================================
@@ -1721,7 +1862,7 @@ with gr.Blocks(
         outputs=[auth_status, auth_tabs]
     )
 
-    login_button.click(
+    login_event = login_button.click(
         fn=login_user,
         inputs=[
             login_email,
@@ -1734,8 +1875,13 @@ with gr.Blocks(
             current_user
         ]
     )
+    login_event.then(
+        fn=get_sidebar_user_name,
+        inputs=current_user,
+        outputs=user_profile,
+    )
 
-    logout_button.click(
+    logout_event = logout_button.click(
         fn=logout_user,
         inputs=None,
         outputs=[
@@ -1744,9 +1890,20 @@ with gr.Blocks(
             current_user
         ]
     )
+    logout_event.then(
+        fn=get_sidebar_user_name,
+        inputs=current_user,
+        outputs=user_profile,
+    )
 
 
 if __name__ == "__main__":
     demo.launch(
-        share=True
+        share=True,
+        theme=gr.themes.Soft(
+            primary_hue="indigo",
+            secondary_hue="indigo",
+            neutral_hue="indigo",
+        ),
+        css=CSS,
     )

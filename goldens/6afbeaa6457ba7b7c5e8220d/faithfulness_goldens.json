@@ -1,0 +1,36 @@
+[
+  {
+    "id": "g001",
+    "owner_id": "6afbeaa6457ba7b7c5e8220d",
+    "query": "How do 1.58-bit LLMs address the specific challenges of high memory consumption and inter-chip communication overhead associated with Mixture-of-Experts (MoE) models?",
+    "ideal_context": "Mixture-of-Experts (MoE) have proven to be a cost-effective approach for LLMs. While it significantly reduces the computation FLOPs, the high memory consumption and inter-chip communication overhead limit its deployment and application. These challenges can be addressed by 1.58-bit LLMs. Firstly, the reduced memory footprint reduces the number of devices required to deploy MoE models. Moreover, it significantly reduces the overhead of transferring activations across networks. Ultimately, there would be no overhead if the entire models could be placed on a single chip.",
+    "chunk_id": 13,
+    "document_id": "9bb06cd2-f456-408b-9dec-a68359456972",
+    "version": 1,
+    "paper_title": "The Era of 1-bit LLMs: All Large Language Models are in 1.58 Bits",
+    "section": "1-bit Mixture-of-Experts (MoE) LLMs",
+    "page_start": 5,
+    "page_end": 5,
+    "source_file": "parsed_papers\\9acb2ab4-b172-44f4-9cde-b8854f7d5aae.md",
+    "text": "Mixture-of-Experts (MoE) have proven to be a cost-effective approach for LLMs. While it significantly reduces the computation FLOPs, the high memory consumption and inter-chip communication overhead limit its deployment and application. These challenges can be addressed by 1.58-bit LLMs. Firstly, the reduced memory footprint reduces the number of devices required to deploy MoE models. Moreover, it significantly reduces the overhead of transferring activations across networks. Ultimately, there would be no overhead if the entire models could be placed on a single chip.",
+    "char_count": 574,
+    "created_at": "2026-11-17T12:14:30.688999"
+  },
+  {
+    "id": "g002",
+    "owner_id": "6afbeaa6457ba7b7c5e8220d",
+    "query": "Compared to the FP16 LLaMA LLM baseline, how much arithmetic operations energy consumption does BitNet b1.58 save for matrix multiplication on 7nm chips?",
+    "ideal_context": "ns full precision and its memory proportion is smaller for larger models. Both latency and memory were measured with a 2-bit kernel, so there is still room for optimization to further reduce the cost. Energy We also estimate the arithmetic operations energy consumption of both BitNet b1.58 and LLaMA LLM. We focus mainly on the calculation for matrix multiplication, since it contributes the most to the cost of LLMs. Figure 3 illustrates the composition of the energy cost. The majority of BitNet b1.58 is INT8 addition calculation, while LLaMA LLM consists of both FP16 addition and FP16 multiplication. According to the energy model in [Hor14, ZZL22], BitNet b1.58 saves 71.4 times arithmetic operations energy consumption for matrix multiplication on 7nm chips. We further reported the end-to-end energy cost for models with 512 tokens. Our results show that as the model size scales, BitNet b1.58 becomes increasingly more efficient in terms of energy consumption compared to the FP16 LLaMA LLM baseline. This is due to the fact that the percentage of nn.Linear grows with the model size, while the cost from other components is smaller for larger models. Throughput We compare the throughput of BitNet b1.58 and LLaMA LLM with 70B parameters on two 80GB A100 cards, using pipeline parallelism [HCB + 19] so that LLaMA LLM 70B could be run on the devices. We increased the batch size until the GPU memory limit was reached, with a sequence length of 512. Table 3 shows that BitNet b1.58 70B can support up to 11 times the batch size of LLaMA LLM, resulting an 8.9 times higher throughput. [4 https://github.com/EleutherAI/lm-evaluation-harness](https://github.com/EleutherAI/lm-evaluation-harness)",
+    "chunk_id": 10,
+    "document_id": "9bb06cd2-f456-408b-9dec-a68359456972",
+    "version": 1,
+    "paper_title": "The Era of 1-bit LLMs: All Large Language Models are in 1.58 Bits",
+    "section": "3 Results",
+    "page_start": 4,
+    "page_end": 4,
+    "source_file": "parsed_papers\\9acb2ab4-b172-44f4-9cde-b8854f7d5aae.md",
+    "text": "ns full precision and its memory proportion is smaller for larger models. Both latency and memory were measured with a 2-bit kernel, so there is still room for optimization to further reduce the cost. Energy We also estimate the arithmetic operations energy consumption of both BitNet b1.58 and LLaMA LLM. We focus mainly on the calculation for matrix multiplication, since it contributes the most to the cost of LLMs. Figure 3 illustrates the composition of the energy cost. The majority of BitNet b1.58 is INT8 addition calculation, while LLaMA LLM consists of both FP16 addition and FP16 multiplication. According to the energy model in [Hor14, ZZL22], BitNet b1.58 saves 71.4 times arithmetic operations energy consumption for matrix multiplication on 7nm chips. We further reported the end-to-end energy cost for models with 512 tokens. Our results show that as the model size scales, BitNet b1.58 becomes increasingly more efficient in terms of energy consumption compared to the FP16 LLaMA LLM baseline. This is due to the fact that the percentage of nn.Linear grows with the model size, while the cost from other components is smaller for larger models. Throughput We compare the throughput of BitNet b1.58 and LLaMA LLM with 70B parameters on two 80GB A100 cards, using pipeline parallelism [HCB + 19] so that LLaMA LLM 70B could be run on the devices. We increased the batch size until the GPU memory limit was reached, with a sequence length of 512. Table 3 shows that BitNet b1.58 70B can support up to 11 times the batch size of LLaMA LLM, resulting an 8.9 times higher throughput. [4 https://github.com/EleutherAI/lm-evaluation-harness](https://github.com/EleutherAI/lm-evaluation-harness)",
+    "char_count": 1703,
+    "created_at": "2026-11-17T12:14:30.688036"
+  }
+]
