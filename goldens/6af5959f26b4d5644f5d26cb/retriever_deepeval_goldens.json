@@ -1,39 +1,39 @@
 [
   {
     "id": "g001",
-    "query": "How does current launch complexity impact the frequency and agility of future model iterations?",
-    "ideal_answer": "Current launch complexity can slow down future launches. To maintain agility and the ability to launch models frequently (potentially once per quarter or more), you should ensure it is easy to add, remove, or recombine features, create and verify fresh pipeline copies, and run multiple copies in parallel.",
+    "query": "Compare MoE's memory and communication challenges with how 1.58-bit LLMs mitigate them.",
+    "ideal_answer": "MoE models suffer from high memory consumption and inter-chip communication overhead. 1.58-bit LLMs mitigate these challenges by reducing the memory footprint, which decreases the number of devices needed for deployment and lowers the overhead of transferring activations across networks.",
     "expected_retrieval_context": [
-      "Don't expect that the model you are working on now will be the last one that you will launch, or even that you will ever stop launching models. Thus consider whether the complexity you are adding with this launch will slow down future launches. Many teams have launched a model per quarter or more for years. There are three basic reasons to launch new models: 1. you are coming up with new features, 2. you are tuning regularization and combining old features in new ways, and/or 3. you are tuning the objective. Regardless, giving a model a bit of love can be good: looking over the data feeding into the example can help find new signals as well as old, broken ones. So, as you build your model, think about how easy it is to add or remove or recombine features. Think about how easy it is to create a fresh copy of the pipeline and verify its correctness. Think about whether it is possible to have two or three copies running in parallel. Finally, don't worry about whether feature 16 of 35 makes it into this version of the pipeline. You'll get it next quarter."
+      "Mixture-of-Experts (MoE) have proven to be a cost-effective approach for LLMs. While it significantly reduces the computation FLOPs, the high memory consumption and inter-chip communication overhead limit its deployment and application. These challenges can be addressed by 1.58-bit LLMs. Firstly, the reduced memory footprint reduces the number of devices required to deploy MoE models. Moreover, it significantly reduces the overhead of transferring activations across networks. Ultimately, there would be no overhead if the entire models could be placed on a single chip."
     ],
     "source": {
       "owner_id": "6af5959f26b4d5644f5d26cb",
-      "document_id": "95c5b82f-7ba0-4739-bda5-eda44403fd28",
+      "document_id": "d96bd246-571a-47a3-a8d5-02212814cab0",
       "version": 1,
-      "chunk_id": 37,
-      "paper_title": "Rules of Machine Learning: Best Practices for ML Engineering",
-      "section": "Rule   #16:   Plan   to   launch   and   iterate.",
-      "page_start": 11,
-      "page_end": 11,
-      "source_file": "parsed_papers\\d01809d2-cd30-4669-b7bc-d7a3d9dabf54.md"
+      "chunk_id": 13,
+      "paper_title": "The Era of 1-bit LLMs: All Large Language Models are in 1.58 Bits",
+      "section": "1-bit Mixture-of-Experts (MoE) LLMs",
+      "page_start": 5,
+      "page_end": 5,
+      "source_file": "parsed_papers\\38690ffc-d71a-4c21-a9ac-05f9900612de.md"
     }
   },
   {
     "id": "g002",
-    "query": "Why quantify system gripes first, and how can human raters help measure \"gag apps\"?",
-    "ideal_answer": "Quantifying system gripes first is necessary because issues must be measurable before they can be used as features, objectives, or metrics (\"measure first, optimize second\"). Human raters can help measure \"gag apps\" by identifying them in Play Search, which is feasible since a small fraction of queries account for a large portion of traffic.",
+    "query": "Compare how a model treats features based on known mistakes versus non-mistakes.",
+    "ideal_answer": "A model will try to use a feature if it allows the system to fix a known mistake (such as a false positive, false negative, or incorrect ranking). Conversely, if a feature is based on examples the system does not perceive as mistakes, the feature will be ignored.",
     "expected_retrieval_context": [
-      "Some members of your team will start to be frustrated with properties of the system they don't like which aren't captured by the existing loss function. At this point, they should do whatever it takes to turn their gripes into solid numbers. For example, if they think that too many 'gag apps' are being shown in Play Search, they could have human raters identify gag apps. (You can feasibly use human­labelled data in this case because a relatively small fraction of the queries account for a large fraction of the traffic.) If your issues are measurable, then you can start using them as features, objectives, or metrics. The general rule is 'measure first, optimize second'."
+      "Suppose that you see a training example that the model got 'wrong'. In a classification task, this could be a false positive or a false negative. In a ranking task, it could be a pair where a positive was ranked lower than a negative. The most important point is that this is an example that the machine learning system knows it got wrong and would like to fix if given the opportunity. If you give the model a feature that allows it to fix the error, the model will try to use it. On the other hand, if you try to create a feature based upon examples the system doesn't see as mistakes, the feature will be ignored. For instance, suppose that in Play Apps Search, someone searches for 'free games'. Suppose one of the top results is a less relevant gag app. So you create a feature for 'gag apps'. However, if you are maximizing number of installs, and people install a gag app when they search for free games, the 'gag apps' feature won't have the effect you want. Once you have examples that the model got wrong, look for trends that are outside your current feature set. For instance, if the system seems to be demoting longer posts, then add post length. Don't be too specific about the features you add. If you are going to add post length, don't try to guess what long means, just add a dozen features and the let model figure out what to do with them (see Rule #21 ). That is the easiest way to get what you want."
     ],
     "source": {
       "owner_id": "6af5959f26b4d5644f5d26cb",
       "document_id": "95c5b82f-7ba0-4739-bda5-eda44403fd28",
       "version": 1,
-      "chunk_id": 52,
+      "chunk_id": 51,
       "paper_title": "Rules of Machine Learning: Best Practices for ML Engineering",
-      "section": "Rule   #27:   Try   to   quantify   observed   undesirable   behavior.",
-      "page_start": 16,
-      "page_end": 16,
+      "section": "Rule   #26:   Look   for   patterns   in   the   measured   errors,   and   create   new   features.",
+      "page_start": 15,
+      "page_end": 15,
       "source_file": "parsed_papers\\d01809d2-cd30-4669-b7bc-d7a3d9dabf54.md"
     }
   }

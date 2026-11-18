@@ -1,0 +1,40 @@
+[
+  {
+    "id": "g001",
+    "query": "Identify the publication year for the AWQ paper authored by Ji Lin et al.",
+    "ideal_answer": "The publication year for the AWQ paper authored by Ji Lin et al. is 2023.",
+    "expected_retrieval_context": [
+      "Table 1: Perplexity as well as the cost of BitNet b1.58 and LLaMA LLM. | Models | Size | Memory (GB) ↓ | Latency (ms) ↓ | PPL ↓ | |--------------|-----------|---------------------------|------------------|-------------| | LLaMA LLM | 700M 700M | 2.08 (1.00x) 0.80 (2.60x) | 1.18 (1.00x) | 12.33 12.87 | | BitNet b1.58 | | | 0.96 (1.23x) | | | LLaMA LLM | 1.3B | 3.34 (1.00x) | 1.62 (1.00x) | 11.25 | | BitNet b1.58 | 1.3B | 1.14 (2.93x) | 0.97 (1.67x) | 11.29 | | LLaMA LLM | 3B | 7.89 (1.00x) | 5.07 (1.00x) | 10.04 | | BitNet b1.58 | 3B | 2.22 (3.55x) | 1.87 (2.71x) | 9.91 | | BitNet b1.58 | 3.9B | 2.38 (3.32x) | 2.11 (2.40x) | 9.62 | Table 2: Zero-shot accuracy of BitNet b1.58 and LLaMA LLM on the end tasks. | Models | Size | ARCe | ARCc | HS | BQ | OQ | PQ | WGe | Avg. | |--------------|--------|--------|--------|------|------|------|------|-------|--------| | LLaMA LLM | 700M | 54.7 | 23.0 | 37.0 | 60.0 | 20.2 | 68.9 | 54.8 | 45.5 | | BitNet b1.58 | 700M | 51.8 | 21.4 | 35.1 | 58.2 | 20.0 | 68.1 | 55.2 | 44.3 | | LLaMA LLM | 1.3B | 56.9 | 23.5 | 38.5 | 59.1 | 21.6 | 70.0 | 53.9 | 46.2 | | BitNet b1.58 | 1.3B | 54.9 | 24.2 | 37.7 | 56.7 | 19.6 | 68.8 | 55.8 | 45.4 | | LLaMA LLM | 3B | 62.1 | 25.6 | 43.3 | 61.8 | 24.6 | 72.1 | 58.2 | 49.7 | | BitNet b1.58 | 3B | 61.4 | 28.3 | 42.9 | 61.5 | 26.6 | 71.5 | 59.3 | 50.2 | | BitNet b1.58 | 3.9B | 64.2 | 28.7 | 44.2 | 63.5 | 24.2 | 73.2 | 60.5 | 51.2 | LLaMA-alike Components. The architecture of LLaMA [TLI + 23, TMS + 23] has been the defacto backbone for open-source LLMs. To embrace the open-source community, our design of BitNet b1.58 adopts the LLaMA-alike components. Specifically, it uses RMSNorm [ZS19], SwiGLU [Sha20], rotary embedding [SAL + 24], and removes all biases."
+    ],
+    "source": {
+      "owner_id": "6afbeaa6457ba7b7c5e8220d",
+      "document_id": "9bb06cd2-f456-408b-9dec-a68359456972",
+      "version": 1,
+      "chunk_id": 6,
+      "paper_title": "The Era of 1-bit LLMs: All Large Language Models are in 1.58 Bits",
+      "section": "2 BitNet b1.58",
+      "page_start": 3,
+      "page_end": 3,
+      "source_file": "parsed_papers\\9acb2ab4-b172-44f4-9cde-b8854f7d5aae.md"
+    }
+  },
+  {
+    "id": "g002",
+    "query": "Does BitNet b1.58 use RMSNorm, SwiGLU, rotary embedding, and remove all biases?",
+    "ideal_answer": "Yes, BitNet b1.58 adopts LLaMA-alike components, specifically using RMSNorm, SwiGLU, rotary embedding, and removing all biases.",
+    "expected_retrieval_context": [
+      "- [LTT + 23] Ji Lin, Jiaming Tang, Haotian Tang, Shang Yang, Xingyu Dang, and Song Han. AWQ: activation-aware weight quantization for LLM compression and acceleration. CoRR , abs/2306.00978, 2023. - [MCKS18] Todor Mihaylov, Peter Clark, Tushar Khot, and Ashish Sabharwal. Can a suit of armor conduct electricity? A new dataset for open book question answering. CoRR , abs/1809.02789, 2018. - [MXBS16] Stephen Merity, Caiming Xiong, James Bradbury, and Richard Socher. Pointer sentinel mixture models, 2016. - [PKL + 16] Denis Paperno, Germán Kruszewski, Angeliki Lazaridou, Quan Ngoc Pham, Raffaella Bernardi, Sandro Pezzelle, Marco Baroni, Gemma Boleda, and Raquel Fernández. The LAMBADA dataset: Word prediction requiring a broad discourse context. In Proceedings of the 54th Annual Meeting of the Association for Computational Linguistics, ACL 2016, August 7-12, 2016, Berlin, Germany, Volume 1: Long Papers . The Association for Computer Linguistics, 2016. - [RSR + 19] Colin Raffel, Noam Shazeer, Adam Roberts, Katherine Lee, Sharan Narang, Michael Matena, Yanqi Zhou, Wei Li, and Peter J. Liu. Exploring the limits of transfer learning with a unified text-to-text transformer. CoRR , abs/1910.10683, 2019. - [SAL + 24] Jianlin Su, Murtadha H. M. Ahmed, Yu Lu, Shengfeng Pan, Wen Bo, and Yunfeng Liu. Roformer: Enhanced transformer with rotary position embedding. Neurocomputing , 568:127063, 2024. - [SBBC20] Keisuke Sakaguchi, Ronan Le Bras, Chandra Bhagavatula, and Yejin Choi. WinoGrande: an adversarial winograd schema challenge at scale. In The Thirty-Fourth AAAI Conference on Artificial Intelligence , pages 8732-8740, 2020. - [Sha20] Noam Shazeer. GLU variants improve transformer. CoRR , abs/2002.05202, 2020."
+    ],
+    "source": {
+      "owner_id": "6afbeaa6457ba7b7c5e8220d",
+      "document_id": "9bb06cd2-f456-408b-9dec-a68359456972",
+      "version": 1,
+      "chunk_id": 19,
+      "paper_title": "The Era of 1-bit LLMs: All Large Language Models are in 1.58 Bits",
+      "section": "References",
+      "page_start": 7,
+      "page_end": 7,
+      "source_file": "parsed_papers\\9acb2ab4-b172-44f4-9cde-b8854f7d5aae.md"
+    }
+  }
+]

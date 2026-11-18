@@ -25,6 +25,37 @@ from config import UPLOADED_DIR,SUPPORTED_FILES,STAGES,PROJECT_DIR
 API_URL = "http://127.0.0.1:8001/ingestion/upload"
 
 
+def format_report(report):
+    formatted_text = "INGESTION REPORT\n"
+    formatted_text += "=" * 40 + "\n\n"
+
+    for item_number, (key, value) in enumerate(
+        report.items(),
+        start=1,
+    ):
+        if isinstance(value, dict):
+            formatted_text += (
+                f"{item_number}. {key.replace('_', ' ').title()}:\n"
+            )
+
+            for sub_number, (sub_key, sub_value) in enumerate(
+                value.items(),
+                start=1,
+            ):
+                formatted_text += (
+                    f"  {item_number}.{sub_number} "
+                    f"{sub_key.replace('_', ' ').title()}: "
+                    f"{sub_value}\n"
+                )
+        else:
+            formatted_text += (
+                f"{item_number}. {key.replace('_', ' ').title()}: "
+                f"{value}\n"
+            )
+
+    return formatted_text
+
+
 def run_ingestion(uploaded_file,current_user):
     """
     Call FastAPI ingestion endpoint and stream
@@ -39,7 +70,7 @@ def run_ingestion(uploaded_file,current_user):
     if uploaded_file is None:
         yield (
             "Please upload a document first.",
-            "{}",
+            format_report({}),
             "",
             ""
         )
@@ -48,7 +79,7 @@ def run_ingestion(uploaded_file,current_user):
     if not current_user or not current_user.get("id"):
         yield (
             "Please log in before running ingestion.",
-            "{}",
+            format_report({}),
             "",
             ""
         )
@@ -132,11 +163,7 @@ def run_ingestion(uploaded_file,current_user):
                 # Send updates to Gradio UI.
                 yield (
                     render_status(statuses, message),
-                    json.dumps(
-                        report,
-                        indent=2,
-                        default=str
-                    ),
+                    format_report(report),
                     markdown_text,
                     chunk_text
                 )
@@ -150,10 +177,7 @@ def run_ingestion(uploaded_file,current_user):
                 statuses,
                 f"❌ {error_message}"
             ),
-            json.dumps(
-                {"error": error_message},
-                indent=2
-            ),
+            format_report({"error": error_message}),
             markdown_text,
             chunk_text
         )
@@ -169,10 +193,7 @@ def run_ingestion(uploaded_file,current_user):
                 statuses,
                 f"❌ {error_message}"
             ),
-            json.dumps(
-                {"error": error_message},
-                indent=2
-            ),
+            format_report({"error": error_message}),
             markdown_text,
             chunk_text
         )
@@ -495,7 +516,7 @@ def run_retriever_evaluation(current_user):
             "⏹ Evaluation stopped.",
             "⏹ Evaluation stopped.",
             "❌ **Error occurred.**",
-            f"```text\n{exc}\n```",
+            f"<pre>{html.escape(str(exc))}</pre>",
         )
 
 
@@ -670,7 +691,7 @@ def run_generator_evaluation_pipeline(current_user):
             "⏹ Evaluation stopped.",
             "⏹ Evaluation stopped.",
             "❌ **Error occurred.**",
-            f"```text\n{exc}\n```",
+            f"<pre>{html.escape(str(exc))}</pre>",
         )
 
     except Exception as e:
@@ -740,7 +761,7 @@ def get_sidebar_user_name(user):
 # CUSTOM CSS
 # =========================================================
 
-CSS = """
+CSS ="""
 :root {
     --indigo-950: #1e1b4b;
     --indigo-900: #312e81;
@@ -1120,6 +1141,951 @@ body {
     }
 }
 """
+# =========================================================
+#  HELPER FOR MULTAGENT CODE
+# =========================================================
+
+
+import gradio as gr
+import uuid
+import html
+
+
+# ==========================================
+# RENDER CHAT HISTORY
+# ==========================================
+
+def render_research_history(history):
+
+    if not history:
+        return """
+        <div class="empty-chat">
+            <h2>Multi-Agent Research Assistant</h2>
+            <p>Ask a question about your indexed research papers.</p>
+        </div>
+        """
+
+    output = []
+
+    for record in history:
+
+        query = html.escape(record["query"])
+
+        answer = html.escape(
+            str(record.get("final_answer", ""))
+        )
+
+        status = record.get("status", "Running")
+
+        status_icon = (
+            "●"
+            if status == "Completed"
+            else "⏳" if status == "Running"
+            else "●"
+        )
+
+        status_color = (
+            "#16a34a"
+            if status == "Completed"
+            else "#d97706" if status == "Running"
+            else "#dc2626"
+        )
+
+        # Execution trace
+        trace_rows = ""
+
+        trace = record.get("execution_trace", [])
+
+        if hasattr(trace, "values"):
+            trace = trace.values.tolist()
+
+        if isinstance(trace, (list, tuple)):
+
+            for row in trace:
+
+                if isinstance(row, (list, tuple)):
+                    cells = "".join(
+                        f"<td>{html.escape(str(cell))}</td>"
+                        for cell in row
+                    )
+
+                    trace_rows += f"<tr>{cells}</tr>"
+
+        # Retrieved chunks
+        chunks = html.escape(
+            str(record.get("retrieved_chunks", ""))
+        )
+
+        # Individual agent outputs
+        agents = [
+            ("Research Analyst", "analysis"),
+            ("Critical Analyst", "critical_analysis"),
+            ("Citation Agent", "cited_analysis")
+        ]
+
+        agent_html = ""
+
+        for agent_name, key in agents:
+
+            content = html.escape(
+                str(record.get(key, ""))
+            )
+
+            agent_html += f"""
+            <details class="agent-details">
+                <summary>{agent_name}</summary>
+                <pre>{content}</pre>
+            </details>
+            """
+
+        # Individual query details
+        details_html = f"""
+        <details class="research-details">
+
+            <summary>
+                <span>🔍 View Details</span>
+                <span class="detail-count">6 agents</span>
+            </summary>
+
+            <div class="details-content">
+
+                <h3>Agent Execution Monitor</h3>
+
+                <p>
+                    {html.escape(str(record.get("pipeline_progress", "")))}
+                </p>
+
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Step</th>
+                                <th>Agent</th>
+                                <th>Status</th>
+                                <th>Executions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {trace_rows}
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Dense + Sparse + RRF + Encoder</h3>
+
+                <details class="agent-details">
+                    <summary>Retrieved Chunks</summary>
+                    <pre>{chunks}</pre>
+                </details>
+
+                <h3>Individual Agent Outputs</h3>
+
+                {agent_html}
+
+            </div>
+        </details>
+        """
+
+        output.append(f"""
+        <div class="conversation-item">
+
+            <div class="user-message">
+                <div class="message-label">You</div>
+                <div class="message-bubble">{query}</div>
+            </div>
+
+            <div class="assistant-message">
+
+                <h3>Research Report</h3>
+
+                <pre class="final-report">{answer}</pre>
+
+                <div class="research-status"
+                     style="color:{status_color}">
+                    {status_icon} {html.escape(status)}
+                </div>
+
+                {details_html}
+
+            </div>
+
+        </div>
+        """)
+
+    return "\n".join(output)
+
+
+# ==========================================
+# CHAT RESEARCH PIPELINE
+# ==========================================
+
+import html
+import json
+import markdown
+import bleach
+
+
+def render_markdown(content):
+    """Convert Markdown into HTML and sanitize the result."""
+
+    if not content:
+        return ""
+
+    converted = markdown.markdown(
+        str(content),
+        extensions=[
+            "fenced_code",
+            "tables",
+            "nl2br",
+        ]
+    )
+
+    allowed_tags = [
+        "p", "br", "strong", "b", "em", "i",
+        "ul", "ol", "li",
+        "h1", "h2", "h3", "h4",
+        "blockquote", "pre", "code",
+        "table", "thead", "tbody", "tr", "th", "td",
+        "a", "hr", "details", "summary",
+        "div", "span"
+    ]
+
+    return bleach.clean(
+        converted,
+        tags=allowed_tags,
+        attributes={
+            "a": ["href", "title"],
+            "code": ["class"],
+            "div": ["class"],
+            "span": ["class"],
+        },
+        protocols=["http", "https", "mailto"],
+        strip=True
+    )
+
+
+def render_research_chat(history):
+
+    if not history:
+        return """
+        <div class="empty-chat">
+            <h2>Welcome to Multi-Agent Research Workspace</h2>
+            <p>Ask a question about your indexed research papers.</p>
+        </div>
+        """
+
+    output = []
+
+    for index, item in enumerate(history):
+
+        query = html.escape(item.get("query", ""))
+
+        answer = render_markdown(
+            item.get("final_answer", "")
+        )
+
+        if not answer:
+            answer = (
+                "<p>" +
+                html.escape(item.get("message", "Research is running...")) +
+                "</p>"
+            )
+
+        progress = html.escape(
+            item.get("progress", "Waiting...")
+        )
+
+        dashboard = item.get("dashboard", [])
+
+        if isinstance(dashboard, list) and dashboard:
+            dashboard_rows = []
+
+            for row in dashboard:
+                if isinstance(row, (list, tuple)) and len(row) == 4:
+                    cells = "".join(
+                        f"<td>{html.escape(str(cell))}</td>"
+                        for cell in row
+                    )
+                    dashboard_rows.append(f"<tr>{cells}</tr>")
+
+            dashboard_html = (
+                """
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Step</th>
+                                <th>Agent</th>
+                                <th>Status</th>
+                                <th>Executions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                """
+                + "".join(dashboard_rows)
+                + """
+                        </tbody>
+                    </table>
+                </div>
+                """
+            )
+        else:
+            dashboard_html = "<p>No execution data yet.</p>"
+
+        retrieved = render_markdown(
+            item.get("retrieved_chunks", "")
+        )
+
+        analysis = render_markdown(
+            item.get("analysis", "")
+        )
+
+        critical = render_markdown(
+            item.get("critical_analysis", "")
+        )
+
+        cited = render_markdown(
+            item.get("cited_analysis", "")
+        )
+
+        output.append(f"""
+        <div class="user-message">
+            <div class="message-label">You</div>
+            <div class="message-content">{query}</div>
+        </div>
+
+        <div class="assistant-message">
+
+            <div class="message-label">
+                Research Assistant
+            </div>
+
+            <div class="answer-content">
+                {answer}
+            </div>
+
+            <div class="completion-status">
+                {progress}
+            </div>
+
+            <details class="research-details">
+
+                <summary>View Details</summary>
+
+                <details class="details-section">
+                    <summary>Agent Execution Monitor</summary>
+                    {dashboard_html}
+                </details>
+
+                <details class="details-section">
+                    <summary>Retrieved Research Chunks</summary>
+                    {retrieved or "<p>No chunks retrieved yet.</p>"}
+                </details>
+
+                <details class="details-section">
+                    <summary>Research Analyst</summary>
+                    {analysis or "<p>Waiting for analyst...</p>"}
+                </details>
+
+                <details class="details-section">
+                    <summary>Critical Analyst</summary>
+                    {critical or "<p>Waiting for critic...</p>"}
+                </details>
+
+                <details class="details-section">
+                    <summary>Citation Agent</summary>
+                    {cited or "<p>Waiting for citation agent...</p>"}
+                </details>
+
+            </details>
+
+        </div>
+        """)
+
+    return "\n".join(output)
+
+
+import gradio as gr
+import html
+import json
+
+
+
+def run_research_chat(user_query, current_user, chat_history):
+
+    chat_history = list(chat_history or [])
+
+    if not user_query or not user_query.strip():
+        yield (
+            render_research_chat(chat_history),
+            chat_history,
+            ""
+        )
+        return
+
+    query = user_query.strip()
+
+    # Create a separate record for this question.
+    entry = {
+        "query": query,
+        "message": "Research pipeline is starting...",
+        "final_answer": "",
+        "retrieved_chunks": "",
+        "analysis": "",
+        "critical_analysis": "",
+        "cited_analysis": "",
+        "dashboard": [],
+        "progress": "Pipeline Progress: 0/6 agents completed"
+    }
+
+    chat_history.append(entry)
+
+    # Immediately display the question.
+    yield (
+        render_research_chat(chat_history),
+        chat_history,
+        ""
+    )
+
+    # Consume your original SSE generator.
+    for result in run_research_pipeline(query, current_user):
+
+        (
+            message,
+            final_answer,
+            retrieved_chunks,
+            analysis,
+            critical_analysis,
+            cited_analysis,
+            dashboard,
+            progress
+        ) = result
+
+        # Update the current question only.
+        entry["message"] = message
+
+        if final_answer:
+            entry["final_answer"] = final_answer
+
+        if retrieved_chunks:
+            entry["retrieved_chunks"] = retrieved_chunks
+
+        if analysis:
+            entry["analysis"] = analysis
+
+        if critical_analysis:
+            entry["critical_analysis"] = critical_analysis
+
+        if cited_analysis:
+            entry["cited_analysis"] = cited_analysis
+
+        if dashboard:
+            entry["dashboard"] = dashboard
+
+        if progress:
+            entry["progress"] = progress
+
+        # Render and send the latest conversation.
+        yield (
+            render_research_chat(chat_history),
+            chat_history,
+            ""
+        )
+
+
+# ==========================================
+# CUSTOM CSS
+# ==========================================
+
+research_css =CSS+ """
+
+.empty-chat {
+    text-align: center;
+    padding: 100px 20px;
+    opacity: 0.7;
+}
+
+.conversation-item {
+    max-width: 900px;
+    margin: 35px auto;
+    padding: 10px 15px;
+}
+
+.user-message {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    margin-bottom: 25px;
+}
+
+.message-label {
+    font-size: 12px;
+    opacity: 0.6;
+    margin-bottom: 6px;
+}
+
+.message-bubble {
+    background: var(--background-fill-secondary);
+    padding: 14px 18px;
+    border-radius: 18px;
+    max-width: 80%;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.assistant-message {
+    width: 100%;
+    line-height: 1.7;
+}
+
+.final-report {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font-family: inherit;
+    font-size: 15px;
+    background: transparent;
+    border: none;
+    padding: 0;
+}
+
+.research-status {
+    font-size: 12px;
+    margin-top: 15px;
+}
+
+.research-details {
+    margin-top: 20px;
+    border: 1px solid var(--border-color-primary);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.research-details summary {
+    padding: 14px 16px;
+    cursor: pointer;
+    font-weight: 600;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    list-style: none;
+}
+
+.research-details summary::-webkit-details-marker {
+    display: none;
+}
+
+.research-details summary:hover {
+    background: var(--background-fill-secondary);
+}
+
+.detail-count {
+    font-size: 12px;
+    opacity: 0.6;
+    font-weight: normal;
+}
+
+.details-content {
+    padding: 15px;
+    border-top: 1px solid var(--border-color-primary);
+}
+
+.details-content h3 {
+    font-size: 15px;
+    margin-top: 20px;
+}
+
+.table-container {
+    overflow-x: auto;
+}
+
+.table-container table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.table-container th,
+.table-container td {
+    border-bottom: 1px solid var(--border-color-primary);
+    padding: 10px;
+    text-align: left;
+}
+
+.nested-details {
+    border: 1px solid var(--border-color-primary);
+    border-radius: 8px;
+    padding: 10px;
+    margin: 10px 0;
+}
+
+.nested-details summary {
+    cursor: pointer;
+    font-size: 13px;
+}
+
+.agent-output {
+    border: 1px solid var(--border-color-primary);
+    border-radius: 8px;
+    padding: 12px;
+    margin: 12px 0;
+}
+
+.agent-output h4 {
+    margin-top: 0;
+}
+
+.agent-output pre,
+.nested-details pre {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font-family: inherit;
+    font-size: 13px;
+}
+
+.empty-chat {
+    
+    text-align: center;
+    padding: 100px 20px;
+    opacity: 0.7;
+}
+
+.conversation-item {
+    max-width: 900px;
+    margin: 35px auto;
+    padding: 10px 15px;
+}
+
+.user-message {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    margin-bottom: 25px;
+}
+
+.message-label {
+    font-size: 12px;
+    opacity: 0.6;
+    margin-bottom: 6px;
+}
+
+.message-bubble {
+    background: var(--background-fill-secondary);
+    padding: 14px 18px;
+    border-radius: 18px;
+    max-width: 80%;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.assistant-message {
+    width: 100%;
+    line-height: 1.7;
+}
+
+.final-report {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font-family: inherit;
+    font-size: 15px;
+    background: transparent;
+    border: none;
+    padding: 0;
+}
+
+.research-status {
+    font-size: 12px;
+    margin-top: 15px;
+}
+
+.research-details {
+    margin-top: 18px;
+    border: 1px solid var(--border-color-primary);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.research-details > summary {
+    padding: 14px 16px;
+    cursor: pointer;
+    font-weight: 600;
+    display: flex;
+    justify-content: space-between;
+    list-style: none;
+}
+
+.research-details > summary::-webkit-details-marker {
+    display: none;
+}
+
+.research-details > summary:hover {
+    background: var(--background-fill-secondary);
+}
+
+.detail-count {
+    opacity: 0.6;
+    font-size: 12px;
+}
+
+.details-content {
+    padding: 15px;
+    border-top: 1px solid var(--border-color-primary);
+}
+
+.details-content h3 {
+    font-size: 15px;
+    margin-top: 20px;
+}
+
+.table-container {
+    overflow-x: auto;
+}
+
+.table-container table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.table-container th,
+.table-container td {
+    padding: 10px;
+    border-bottom: 1px solid var(--border-color-primary);
+    text-align: left;
+}
+
+.agent-details {
+    border: 1px solid var(--border-color-primary);
+    border-radius: 8px;
+    padding: 12px;
+    margin: 10px 0;
+}
+
+.agent-details summary {
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.agent-details pre {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font-family: inherit;
+    font-size: 13px;
+    margin-top: 12px;
+}
+
+
+.chat-user {
+    margin: 20px 0 12px auto;
+    padding: 14px;
+    border-radius: 14px;
+    background: var(--block-background-fill);
+    max-width: 80%;
+}
+
+.chat-assistant {
+    margin: 12px 0 24px;
+    padding: 16px;
+    border-radius: 14px;
+    background: var(--panel-background-fill);
+    max-width: 90%;
+}
+
+.chat-user p,
+.chat-assistant p {
+    white-space: pre-wrap;
+    line-height: 1.6;
+}
+
+.chat-assistant details {
+    margin-top: 16px;
+    border: 1px solid var(--border-color-primary);
+    border-radius: 10px;
+    padding: 12px;
+}
+
+.chat-assistant summary {
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.chat-assistant pre {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font-size: 12px;
+}
+
+
+#research-chat {
+    max-height: 65vh;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 18px;
+    border-radius: 14px;
+    box-sizing: border-box;
+}
+
+#research-query-row {
+    align-items: center !important;
+}
+
+#research-query-input textarea,
+#research-send-button {
+    box-sizing: border-box;
+    height: 44px !important;
+    min-height: 44px !important;
+}
+
+.empty-chat {
+    text-align: center;
+    padding: 100px 15px;
+    opacity: 0.75;
+}
+
+.user-message {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    margin: 24px 0;
+}
+
+.user-message .message-content {
+    max-width: 80%;
+    padding: 13px 17px;
+    border-radius: 16px;
+    background: var(--button-secondary-background-fill);
+    line-height: 1.6;
+}
+
+.assistant-message {
+    max-width: 95%;
+    margin: 25px 0 35px;
+    padding: 5px 10px;
+    line-height: 1.7;
+}
+
+.message-label {
+    font-weight: 650;
+    margin-bottom: 10px;
+}
+
+.answer-content {
+    overflow-wrap: anywhere;
+}
+
+.answer-content pre,
+.details-section pre {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    overflow-x: auto;
+    padding: 12px;
+    border-radius: 9px;
+    background: var(--block-background-fill);
+}
+
+.answer-content table {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+.answer-content th:last-child,
+.answer-content td:last-child {
+    white-space: nowrap;
+    overflow-wrap: normal;
+}
+
+.answer-content th,
+.answer-content td {
+    border: 1px solid var(--border-color-primary);
+    padding: 8px;
+}
+
+.completion-status {
+    font-size: 12px;
+    opacity: 0.65;
+    margin-top: 12px;
+}
+
+.research-details {
+    margin-top: 18px;
+    border: 1px solid var(--border-color-primary);
+    border-radius: 12px;
+    padding: 12px 15px;
+}
+
+.research-details summary {
+    cursor: pointer;
+    font-weight: 650;
+}
+
+.details-section {
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-color-primary);
+    overflow-wrap: anywhere;
+}
+
+.details-section:last-child {
+    border-bottom: none;
+}
+
+.evaluation-report {
+    line-height: 1.6;
+}
+
+.evaluation-report .table-container table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.evaluation-report .table-container th,
+.evaluation-report .table-container td {
+    border: 1px solid var(--border-color-primary);
+    padding: 10px 12px;
+    text-align: left;
+    vertical-align: top;
+}
+
+.evaluation-report .table-container th {
+    background: var(--background-fill-secondary);
+    font-weight: 650;
+}
+
+.evaluation-report > h2 {
+    margin-top: 24px;
+}
+
+.evaluation-test-cases {
+    margin: 16px 0 24px;
+    border: 1px solid var(--border-color-primary);
+    border-radius: 12px;
+    padding: 12px 16px;
+}
+
+.evaluation-test-cases > summary {
+    cursor: pointer;
+    font-weight: 650;
+}
+
+.evaluation-test-case {
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-color-primary);
+}
+
+.evaluation-test-case:last-child {
+    border-bottom: none;
+}
+
+.evaluation-value {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+
+"""
+
+
+
 
 # =========================================================
 # GRADIO APPLICATION
@@ -1384,9 +2350,9 @@ with gr.Blocks(
                             )
 
                         with gr.Column(scale=1):
-                            report_output = gr.Code(
+                            report_output = gr.Textbox(
                                 label="Ingestion Report",
-                                language="json",
+                                lines=15,
                                 interactive=False,
                             )
 
@@ -1429,126 +2395,77 @@ with gr.Blocks(
                 # =========================
                 # PAGE 3: MULTI-AGENT
                 # =========================
+                
+                
+                # =========================
+                # PAGE 3: MULTI-AGENT CHAT
+                # =========================
 
                 with gr.Column(visible=False) as agents_page:
+
+                    gr.Markdown("# Multi-Agent Research Workspace")
+
                     gr.Markdown(
-                        "# Multi-Agent Research Workspace\n\n"
                         "Ask questions about your indexed research papers. "
-                        "Multiple AI agents will collaborate to generate "
-                        "an evidence-based research report."
+                        "Your research agents will collaborate to produce "
+                        "evidence-based answers."
                     )
 
-                    # --------------------------------
-                    # RESEARCH QUESTION
-                    # --------------------------------
+                    # Session conversation history.
+                    chat_history = gr.State([])
 
-                    gr.Markdown("## Research Question")
-
-                    query_input = gr.Textbox(
-                        label="Enter your research question",
-                        placeholder=(
-                            "Example: Explain the abstract of "
-                            "The Era of 1-bit LLMs."
-                        ),
-                        lines=3
+                    # Chat window.
+                    chat_display = gr.HTML(
+                        value=render_research_chat([]),
+                        elem_id="research-chat",
+                        max_height="65vh"
                     )
-
-                    research_run_button = gr.Button(
-                        "Run Research Pipeline",
-                        variant="primary"
-                    )
-
-                    with gr.Accordion("Details", open=False):
-                        # --------------------------------
-                        # LIVE EXECUTION TRACE
-                        # --------------------------------
-
-                        gr.Markdown("---")
-                        gr.Markdown("## Agent Execution Monitor")
-
-                        pipeline_progress = gr.Markdown(
-                            "**Progress:** Waiting to start"
-                        )
-
-                        execution_trace = gr.Dataframe(
-                            headers=[
-                                "Step",
-                                "Agent",
-                                "Status",
-                                "Executions"
-                            ],
-                            datatype=[
-                                "number",
-                                "str",
-                                "str",
-                                "number"
-                            ],
-                            value=[
-                                [1, "Orchestrator", "Waiting", 0],
-                                [2, "Retriever", "Waiting", 0],
-                                [3, "Research Analyst", "Waiting", 0],
-                                [4, "Critical Analyst", "Waiting", 0],
-                                [5, "Citation Agent", "Waiting", 0],
-                                [6, "Synthesis Writer", "Waiting", 0],
-                            ],
-                            interactive=False,
-                            wrap=True,
-                            label="Agent Execution Status"
-                        )
-
-                        # --------------------------------
-                        # INDIVIDUAL AGENT OUTPUTS
-                        # --------------------------------
-
-                        gr.Markdown("---")
-                        gr.Markdown("## Dense + Sparse + RRF + Encoder")
-                        with gr.Accordion("Retrieved Chunks", open=False):
-                            retrieved_chunks = gr.Markdown()
-
-                        gr.Markdown("## Agent Analysis")
-
-                        with gr.Accordion("1. Research Analyst", open=False):
-                            analysis_output = gr.Markdown()
-
-                        with gr.Accordion("2. Critical Analyst", open=False):
-                            critical_output = gr.Markdown()
-
-                        with gr.Accordion("3. Citation Agent", open=False):
-                            cited_analysis_output = gr.Markdown()
-
-                    # --------------------------------
-                    # PIPELINE STATUS
-                    # --------------------------------
-
-                    pipeline_status = gr.Markdown()
-
-                    # --------------------------------
-                    # FINAL ANSWER
-                    # --------------------------------
 
                     gr.Markdown("---")
-                    gr.Markdown("## Final Research Report")
 
-                    final_answer = gr.Markdown()
+                    # Bottom query input.
+                    with gr.Row(elem_id="research-query-row"):
 
-                    # --------------------------------
-                    # PIPELINE EXECUTION
-                    # --------------------------------
+                        query_input = gr.Textbox(
+                            placeholder="Ask a research question...",
+                            lines=1,
+                            max_lines=1,
+                            show_label=False,
+                            scale=8,
+                            elem_id="research-query-input"
+                        )
+
+                        research_run_button = gr.Button(
+                            "Send ↑",
+                            variant="primary",
+                            scale=1,
+                            elem_id="research-send-button"
+                        )
+
+                    # Stream the chat response.
+                    research_inputs = [
+                        query_input,
+                        current_user,
+                        chat_history
+                    ]
+                    research_outputs = [
+                        chat_display,
+                        chat_history,
+                        query_input
+                    ]
 
                     research_run_button.click(
-                        fn=run_research_pipeline,
-                        inputs=[query_input, current_user],
-                        outputs=[
-                            pipeline_status,
-                            final_answer,
-                            retrieved_chunks,
-                            analysis_output,
-                            critical_output,
-                            cited_analysis_output,
-                            execution_trace,
-                            pipeline_progress,
-                        ]
+                        fn=run_research_chat,
+                        inputs=research_inputs,
+                        outputs=research_outputs
                     )
+
+                    query_input.submit(
+                        fn=run_research_chat,
+                        inputs=research_inputs,
+                        outputs=research_outputs
+                    )
+
 
                 # =========================
                 # PAGE 4: RESEARCH PAPERS
@@ -1623,7 +2540,7 @@ with gr.Blocks(
                         gr.Markdown("---")
                         gr.Markdown("## 📊 Evaluation Results")
 
-                        evaluation_output = gr.Markdown(
+                        evaluation_output = gr.HTML(
                             label="DeepEval Evaluation Report"
                         )
 
@@ -1692,7 +2609,7 @@ with gr.Blocks(
 
                         gr.Markdown("## 📊 Generator Evaluation Results")
 
-                        generator_output = gr.Markdown(
+                        generator_output = gr.HTML(
                             label="DeepEval Generator Report"
                         )
 
@@ -1756,8 +2673,8 @@ with gr.Blocks(
 
                         gr.Markdown("## 📊 RAG Evaluation Report")
 
-                        rag_evaluation_report = gr.Markdown(
-                            "Your evaluation report will appear here."
+                        rag_evaluation_report = gr.HTML(
+                            "<p>Your evaluation report will appear here.</p>"
                         )
 
                         # =====================================
@@ -1905,5 +2822,5 @@ if __name__ == "__main__":
             secondary_hue="indigo",
             neutral_hue="indigo",
         ),
-        css=CSS,
+        css=research_css
     )

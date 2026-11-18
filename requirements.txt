@@ -37,3 +37,5 @@ pwdlib[argon2]
 httpx
 python-jose[cryptography]
 torch
+markdown 
+bleach

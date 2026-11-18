@@ -1,6 +1,7 @@
 # evals/generator_evaluation.py
 
 import json
+import html
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -152,25 +153,16 @@ def format_generator_report(result):
 
     test_results = result.test_results
 
-    report = []
-
     total_tests = len(test_results)
-
     passed_tests = 0
-
     metric_summary = {}
-
-    report.append(
-        "# 🚀 DeepEval Generator Evaluation Results"
-    )
-
-    # =====================================
-    # INDIVIDUAL TEST CASES
-    # =====================================
+    metric_names = []
+    test_case_sections = []
+    test_score_data = []
 
     for index, test in enumerate(test_results):
 
-        metrics_data = test.metrics_data
+        metrics_data = test.metrics_data or []
 
         test_passed = all(
             metric.success for metric in metrics_data
@@ -185,55 +177,47 @@ def format_generator_report(result):
             else "❌ FAILED"
         )
 
-        report.append(
-            f"## {status} — test_case_{index + 1}"
-        )
-
-        report.append(
-            f"**Input:** {test.input}"
-        )
-
-        report.append(
-            f"**Generated Answer:**\n\n{test.actual_output}"
-        )
-
-        report.append("### Evaluation Metrics")
+        metric_rows = []
+        test_scores = {}
 
         for metric in metrics_data:
 
-            name = metric.name
-
+            name = str(metric.name)
             score = metric.score
-
             threshold = metric.threshold
-
-            reason = (
-                metric.reason
-                or "No reason provided"
+            reason = metric.reason or "No reason provided"
+            metric_status = "PASS" if metric.success else "FAIL"
+            score_text = (
+                "N/A"
+                if score is None
+                else f"{score:.2f}"
+                if isinstance(score, (int, float))
+                else str(score)
+            )
+            threshold_text = (
+                "N/A"
+                if threshold is None
+                else f"{threshold:.2f}"
+                if isinstance(threshold, (int, float))
+                else str(threshold)
             )
 
-            metric_status = (
-                "PASS"
-                if metric.success
-                else "FAIL"
-            )
+            if name not in metric_names:
+                metric_names.append(name)
 
-            report.append(
-                f"#### {metric_status} — {name}"
-            )
+            test_scores[name] = f"{score_text} ({metric_status})"
 
-            report.append(f"- **Score:** {score}")
-
-            report.append(
-                f"- **Threshold:** {threshold}"
-            )
-
-            report.append(
-                f"- **Reason:** {reason}"
+            metric_rows.append(
+                "<tr>"
+                f"<td>{html.escape(name)}</td>"
+                f"<td>{html.escape(score_text)}</td>"
+                f"<td>{html.escape(threshold_text)}</td>"
+                f"<td>{metric_status}</td>"
+                f"<td>{html.escape(str(reason))}</td>"
+                "</tr>"
             )
 
             if name not in metric_summary:
-
                 metric_summary[name] = {
                     "scores": [],
                     "passed": 0,
@@ -241,93 +225,145 @@ def format_generator_report(result):
                 }
 
             if score is not None:
-
-                metric_summary[name]["scores"].append(
-                    score
-                )
+                metric_summary[name]["scores"].append(score)
 
             if metric.success:
-
                 metric_summary[name]["passed"] += 1
-
             else:
-
                 metric_summary[name]["failed"] += 1
 
-        report.append("---")
+        metric_body = "".join(metric_rows) or (
+            '<tr><td colspan="5">No metrics were returned.</td></tr>'
+        )
 
-    # =====================================
-    # AGGREGATE METRICS
-    # =====================================
+        test_case_sections.append(
+            f"""
+            <section class="evaluation-test-case">
+                <h3>{status} — test_case_{index + 1}</h3>
+                <p class="evaluation-value"><strong>Input:</strong> {html.escape(str(test.input))}</p>
+                <p class="evaluation-value"><strong>Generated Answer:</strong></p>
+                <div class="evaluation-value">{html.escape(str(test.actual_output))}</div>
+                <h4>Evaluation Metrics</h4>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Metric</th>
+                                <th>Score</th>
+                                <th>Threshold</th>
+                                <th>Result</th>
+                                <th>Reason</th>
+                            </tr>
+                        </thead>
+                        <tbody>{metric_body}</tbody>
+                    </table>
+                </div>
+            </section>
+            """
+        )
 
-    report.append("# 📊 Aggregate Metrics")
+        test_score_data.append((index + 1, test_passed, test_scores))
 
-    report.append(
-        "| Metric | Average Score | Pass Rate | Passed | Failed | Total |"
-    )
-
-    report.append(
-        "|---|---:|---:|---:|---:|---:|"
-    )
+    aggregate_rows = []
 
     for name, data in metric_summary.items():
 
         scores = data["scores"]
+        average = sum(scores) / len(scores) if scores else 0
+        total = data["passed"] + data["failed"]
+        pass_rate = data["passed"] / total * 100 if total else 0
 
-        average = (
-            sum(scores) / len(scores)
-            if scores else 0
+        aggregate_rows.append(
+            "<tr>"
+            f"<td>{html.escape(name)}</td>"
+            f"<td>{average:.2f}</td>"
+            f"<td>{pass_rate:.2f}%</td>"
+            f"<td>{data['passed']}</td>"
+            f"<td>{data['failed']}</td>"
+            f"<td>{total}</td>"
+            "</tr>"
         )
 
-        total = (
-            data["passed"] + data["failed"]
-        )
+    score_table_headers = "".join(
+        f"<th>{html.escape(name)}</th>"
+        for name in metric_names
+    )
+    score_table_rows = []
 
-        pass_rate = (
-            data["passed"] / total * 100
-            if total else 0
+    for index, test_passed, test_scores in test_score_data:
+        score_cells = "".join(
+            f"<td>{html.escape(test_scores.get(name, 'N/A'))}</td>"
+            for name in metric_names
         )
-
-        report.append(
-            f"| {name} | {average:.2f} "
-            f"| {pass_rate:.2f}% "
-            f"| {data['passed']} "
-            f"| {data['failed']} "
-            f"| {total} |"
+        score_table_rows.append(
+            "<tr>"
+            f"<td>test_case_{index}</td>"
+            f"{score_cells}"
+            f"<td>{'Passed' if test_passed else 'Failed'}</td>"
+            "</tr>"
         )
-
-    # =====================================
-    # OVERALL RESULTS
-    # =====================================
 
     failed_tests = total_tests - passed_tests
-
-    pass_rate = (
-        passed_tests / total_tests * 100
-        if total_tests else 0
+    pass_rate = passed_tests / total_tests * 100 if total_tests else 0
+    test_case_content = "".join(test_case_sections) or (
+        "<p>No test cases were evaluated.</p>"
+    )
+    aggregate_body = "".join(aggregate_rows) or (
+        '<tr><td colspan="6">No metrics were evaluated.</td></tr>'
+    )
+    score_table_body = "".join(score_table_rows) or (
+        f'<tr><td colspan="{len(metric_names) + 2}">No test cases were evaluated.</td></tr>'
     )
 
-    report.append(
-        "# 🎯 Overall Generator Evaluation"
-    )
+    return f"""
+    <div class="evaluation-report">
+        <h2>🚀 DeepEval Generator Evaluation Results</h2>
 
-    report.append(
-        f"- Total Tests: **{total_tests}**"
-    )
+        <details class="evaluation-test-cases">
+            <summary>Test Cases ({total_tests})</summary>
+            {test_case_content}
+        </details>
 
-    report.append(
-        f"- Passed: **{passed_tests}**"
-    )
+        <h2>📊 Aggregate Metrics</h2>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Metric</th>
+                        <th>Average Score</th>
+                        <th>Pass Rate</th>
+                        <th>Passed</th>
+                        <th>Failed</th>
+                        <th>Total</th>
+                    </tr>
+                </thead>
+                <tbody>{aggregate_body}</tbody>
+            </table>
+        </div>
 
-    report.append(
-        f"- Failed: **{failed_tests}**"
-    )
+        <h2>🎯 Overall Generator Evaluation</h2>
+        <ul>
+            <li>Total Tests: <strong>{total_tests}</strong></li>
+            <li>Passed: <strong>{passed_tests}</strong></li>
+            <li>Failed: <strong>{failed_tests}</strong></li>
+            <li>Overall Pass Rate: <strong>{pass_rate:.2f}%</strong></li>
+        </ul>
 
-    report.append(
-        f"- Overall Pass Rate: **{pass_rate:.2f}%**"
-    )
-
-    return "\n\n".join(report)
+        <h2>Test Case Score Summary</h2>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Test Case</th>
+                        {score_table_headers}
+                        <th>Overall Result</th>
+                    </tr>
+                </thead>
+                <tbody>{score_table_body}</tbody>
+            </table>
+        </div>
+    </div>
+    """
 
 
 # ==========================================

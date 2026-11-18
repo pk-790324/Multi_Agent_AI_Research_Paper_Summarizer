@@ -71,7 +71,6 @@ def build_report(state, statuses):
 
         # Document management
         "document_id": artifacts.get("document_id"),
-        "file_name": artifacts.get("file_name"),
         "original_filename": artifacts.get("original_filename"),
         "file_hash": artifacts.get("file_hash"),
         "owner_id": artifacts.get("owner_id"),
@@ -79,9 +78,7 @@ def build_report(state, statuses):
         "duplicate_status": artifacts.get("duplicate_status"),
 
         # Existing ingestion information
-        "file_path": artifacts.get("file_path"),
-        "markdown_path": artifacts.get("markdown_path"),
-        "chunk_file": artifacts.get("chunk_file"),
+
         "chunk_size": artifacts.get("chunk_size"),
         "chunk_overlap": artifacts.get("chunk_overlap"),
 

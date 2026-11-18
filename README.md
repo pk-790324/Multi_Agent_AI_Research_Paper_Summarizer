@@ -65,6 +65,12 @@ Multi_Agent_AI_Research_Paper_Summarizer/
 │   ├── orchestrator_agent.py
 │   ├── retriever_agent.py
 │   └── synthesizer_agent.py
+├── assets/                      # README architecture diagrams
+│   ├── hybrid-retrieval-research-pipeline.png
+│   ├── jwt-auth-flow.png
+│   ├── langgraph-research-agent-workflow.png
+│   ├── orchestrator-routing-flowchart.png
+│   └── stateful-ingestion-workflow.png
 ├── api/                         # FastAPI routers
 │   ├── auth.py
 │   ├── auth_utils.py
@@ -141,8 +147,10 @@ Multi_Agent_AI_Research_Paper_Summarizer/
 - Gradio
 - LangChain / LangGraph
 - Groq + LangChain Groq integration
-- Ollama embeddings and LLM usage
-- Qdrant
+- Ollama `mxbai-embed-large:latest` embeddings
+- FastEmbed `Qdrant/bm25` sparse embeddings
+- Sentence Transformers cross-encoder reranking
+- Qdrant named dense and sparse vectors
 - MongoDB
 - Docling / PyMuPDF / Markdown parsing pipeline
 - DeepEval
@@ -246,14 +254,18 @@ Files are validated, saved, parsed to Markdown, chunked while preserving section
 
 ### 3. Hybrid Retrieval
 
-The retriever uses `services/hybrid_search_service.py` to perform:
+![Hybrid Retrieval Research Pipeline](./assets/hybrid-retrieval-research-pipeline.png)
 
-- dense embedding search against Qdrant
-- sparse lexical search using BM25-style embeddings
-- reciprocal rank fusion (RRF)
-- cross-encoder reranking for final ordering
+The retrieval pipeline implemented in `services/hybrid_search_service.py` combines semantic and lexical search:
 
-All results are filtered to the authenticated user’s documents and paper versions.
+1. The research question is embedded with `mxbai-embed-large:latest` for dense retrieval.
+2. The same question is encoded with `Qdrant/bm25` for sparse lexical retrieval.
+3. Qdrant performs dense and sparse prefetch searches, with mandatory `owner_id` filtering and an optional `paper_slug` filter.
+4. Reciprocal Rank Fusion (RRF) combines the ranked candidate lists.
+5. A `cross-encoder/ms-marco-MiniLM-L-6-v2` reranker jointly scores each question and chunk pair.
+6. The retriever returns the final top-k chunks. The research retriever currently uses `candidate_k=20` and `top_k=5`.
+
+The result records include rank, fused and rerank scores, paper metadata, section, page range, chunk ID, source file, and page content. This keeps retrieval user-scoped and supplies evidence-rich context to the research agents.
 
 ### 4. Multi-Agent Research Workflow
 

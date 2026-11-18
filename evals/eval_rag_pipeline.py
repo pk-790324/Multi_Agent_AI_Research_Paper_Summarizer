@@ -1,3 +1,4 @@
+import html
 from pathlib import Path
 from dotenv import load_dotenv
 from deepeval import evaluate
@@ -77,36 +78,75 @@ def format_rag_result(
     answer: str,
 ):
 
-    lines = [
-        f"## Test Case {index}",
-        f"**Query:** {query}",
-        "",
-        "### Generated Answer",
-        answer,
-        "",
-        "### Metric Results",
+    metrics_data = [
+        metric
+        for test in evaluation_result.test_results
+        for metric in test.metrics_data
     ]
 
-    for test in evaluation_result.test_results:
+    test_passed = bool(metrics_data) and all(
+        metric.success for metric in metrics_data
+    )
+    status = "PASSED" if test_passed else "FAILED"
+    metric_rows = []
 
-        for metric in test.metrics_data:
+    for metric in metrics_data:
 
-            score = metric.score
-            threshold = metric.threshold
-            success = metric.success
-            reason = metric.reason
+        score = metric.score
+        threshold = metric.threshold
+        metric_status = "PASS" if metric.success else "FAIL"
+        score_text = (
+            "N/A"
+            if score is None
+            else f"{score:.2f}"
+            if isinstance(score, (int, float))
+            else str(score)
+        )
+        threshold_text = (
+            "N/A"
+            if threshold is None
+            else f"{threshold:.2f}"
+            if isinstance(threshold, (int, float))
+            else str(threshold)
+        )
 
-            status = "PASS" if success else "FAIL"
+        metric_rows.append(
+            "<tr>"
+            f"<td>{html.escape(str(metric.name))}</td>"
+            f"<td>{html.escape(score_text)}</td>"
+            f"<td>{html.escape(threshold_text)}</td>"
+            f"<td>{metric_status}</td>"
+            f"<td>{html.escape(str(metric.reason or 'No reason provided'))}</td>"
+            "</tr>"
+        )
 
-            lines.extend([
-                f"#### {metric.name}: {status}",
-                f"- **Score:** {score}",
-                f"- **Threshold:** {threshold}",
-                f"- **Reason:** {reason or 'No reason provided'}",
-                "",
-            ])
+    metric_body = "".join(metric_rows) or (
+        '<tr><td colspan="5">No metrics were returned.</td></tr>'
+    )
 
-    return "\n".join(lines)
+    return f"""
+    <section class="evaluation-test-case">
+        <h3>Test Case {index} — {status}</h3>
+        <p class="evaluation-value"><strong>Query:</strong> {html.escape(str(query))}</p>
+        <h4>Generated Answer</h4>
+        <div class="evaluation-value">{html.escape(str(answer))}</div>
+        <h4>Metric Results</h4>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Metric</th>
+                        <th>Score</th>
+                        <th>Threshold</th>
+                        <th>Result</th>
+                        <th>Reason</th>
+                    </tr>
+                </thead>
+                <tbody>{metric_body}</tbody>
+            </table>
+        </div>
+    </section>
+    """
 
 
 # =========================================================
@@ -156,6 +196,8 @@ def run_rag_evaluation(current_user: dict):
 
     all_reports = []
     errors = []
+    metric_names = []
+    test_score_data = []
 
     passed_cases = 0
     failed_cases = 0
@@ -169,10 +211,21 @@ def run_rag_evaluation(current_user: dict):
         query = golden.get("query")
 
         if not query:
+            error_message = "Missing query in golden dataset."
             errors.append(
-                f"Test case {index}: Missing query in golden dataset."
+                f"Test case {index}: {error_message}"
             )
             failed_cases += 1
+            all_reports.append(
+                f"""
+                <section class="evaluation-test-case">
+                    <h3>Test Case {index} — ERROR</h3>
+                    <p class="evaluation-value"><strong>Query:</strong> Missing</p>
+                    <p class="evaluation-value"><strong>Error:</strong> {html.escape(error_message)}</p>
+                </section>
+                """
+            )
+            test_score_data.append((index, {}, "Error"))
             continue
 
         try:
@@ -215,6 +268,32 @@ def run_rag_evaluation(current_user: dict):
                 metrics=metrics,
             )
 
+            case_metrics = [
+                metric
+                for test in evaluation_result.test_results
+                for metric in test.metrics_data
+            ]
+            case_passed = bool(case_metrics) and all(
+                metric.success for metric in case_metrics
+            )
+
+            case_scores = {}
+            for metric in case_metrics:
+                name = str(metric.name)
+                if name not in metric_names:
+                    metric_names.append(name)
+
+                score = metric.score
+                score_text = (
+                    "N/A"
+                    if score is None
+                    else f"{score:.2f}"
+                    if isinstance(score, (int, float))
+                    else str(score)
+                )
+                metric_status = "PASS" if metric.success else "FAIL"
+                case_scores[name] = f"{score_text} ({metric_status})"
+
             # ---------------------------------
             # D. FORMAT RESULT
             # ---------------------------------
@@ -228,19 +307,17 @@ def run_rag_evaluation(current_user: dict):
 
             all_reports.append(case_report)
 
+            test_score_data.append((
+                index,
+                case_scores,
+                "Passed" if case_passed else "Failed"
+            ))
+
             # ---------------------------------
             # E. COUNT PASSED / FAILED CASES
             # ---------------------------------
 
-            case_metrics = [
-                metric
-                for test in evaluation_result.test_results
-                for metric in test.metrics_data
-            ]
-
-            if case_metrics and all(
-                metric.success for metric in case_metrics
-            ):
+            if case_passed:
                 passed_cases += 1
             else:
                 failed_cases += 1
@@ -254,10 +331,15 @@ def run_rag_evaluation(current_user: dict):
             )
 
             all_reports.append(
-                f"## Test Case {index} - ERROR\n"
-                f"**Query:** {query}\n\n"
-                f"**Error:** `{str(exc)}`"
+                f"""
+                <section class="evaluation-test-case">
+                    <h3>Test Case {index} — ERROR</h3>
+                    <p class="evaluation-value"><strong>Query:</strong> {html.escape(str(query))}</p>
+                    <p class="evaluation-value"><strong>Error:</strong> {html.escape(str(exc))}</p>
+                </section>
+                """
             )
+            test_score_data.append((index, {}, "Error"))
 
     # =====================================
     # BUILD FINAL REPORT
@@ -271,26 +353,61 @@ def run_rag_evaluation(current_user: dict):
         else 0
     )
 
-    report = [
-        "# End-to-End RAG Pipeline Evaluation",
-        "",
-        "## Evaluation Summary",
-        f"- **Total golden cases:** {total}",
-        f"- **Passed cases:** {passed_cases}",
-        f"- **Failed cases:** {failed_cases}",
-        f"- **Pass rate:** {pass_rate:.2f}%",
-        "",
-        "---",
-        "",
-        "\n\n---\n\n".join(all_reports),
-    ]
+    score_table_headers = "".join(
+        f"<th>{html.escape(name)}</th>"
+        for name in metric_names
+    )
+    score_table_rows = []
 
-    if errors:
-        report.extend([
-            "",
-            "## Errors",
-            *[f"- {error}" for error in errors],
-        ])
+    for index, case_scores, status in test_score_data:
+        score_cells = "".join(
+            f"<td>{html.escape(case_scores.get(name, 'N/A'))}</td>"
+            for name in metric_names
+        )
+        score_table_rows.append(
+            "<tr>"
+            f"<td>Test Case {index}</td>"
+            f"{score_cells}"
+            f"<td>{status}</td>"
+            "</tr>"
+        )
+
+    score_table_body = "".join(score_table_rows) or (
+        f'<tr><td colspan="{len(metric_names) + 2}">No test cases were evaluated.</td></tr>'
+    )
+
+    report = f"""
+    <div class="evaluation-report">
+        <h2>End-to-End RAG Pipeline Evaluation</h2>
+
+        <h3>Evaluation Summary</h3>
+        <ul>
+            <li>Total Golden Cases: <strong>{total}</strong></li>
+            <li>Passed Cases: <strong>{passed_cases}</strong></li>
+            <li>Failed Cases: <strong>{failed_cases}</strong></li>
+            <li>Pass Rate: <strong>{pass_rate:.2f}%</strong></li>
+        </ul>
+
+        <details class="evaluation-test-cases">
+            <summary>Test Cases ({total_processed})</summary>
+            {"".join(all_reports) or "<p>No test cases were evaluated.</p>"}
+        </details>
+
+        <h2>Test Case Score Summary</h2>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Test Case</th>
+                        {score_table_headers}
+                        <th>Overall Result</th>
+                    </tr>
+                </thead>
+                <tbody>{score_table_body}</tbody>
+            </table>
+        </div>
+    </div>
+    """
 
     return {
         "status": (
@@ -304,7 +421,7 @@ def run_rag_evaluation(current_user: dict):
         "failed": failed_cases,
         "pass_rate": round(pass_rate, 2),
         "errors": errors,
-        "report": "\n".join(report),
+        "report": report,
     }
 
 
@@ -480,6 +597,6 @@ def run_rag_pipeline_gradio(current_user):
             "⏹ Evaluation stopped.",
             "⏹ Evaluation stopped.",
             "❌ **Error occurred.**",
-            f"```text\n{exc}\n```",
+            f"<pre>{html.escape(str(exc))}</pre>",
         )
 
