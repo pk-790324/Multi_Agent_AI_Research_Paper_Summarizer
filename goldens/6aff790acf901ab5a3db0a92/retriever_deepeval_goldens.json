@@ -1,0 +1,97 @@
+[
+  {
+    "id": "g001",
+    "query": "Is Ashish Vaswani listed at Google Brain with avaswani@google.com?",
+    "ideal_answer": "Yes, Ashish Vaswani is listed at Google Brain with avaswani@google.com.",
+    "expected_retrieval_context": [
+      "In this section we compare various aspects of self-attention layers to the recurrent and convolutional layers commonly used for mapping one variable-length sequence of symbol representations ( x 1 , ..., x n ) to another sequence of equal length ( z 1 , ..., z n ) , with x i , z i ∈ R d , such as a hidden layer in a typical sequence transduction encoder or decoder. Motivating our use of self-attention we consider three desiderata. One is the total computational complexity per layer. Another is the amount of computation that can be parallelized, as measured by the minimum number of sequential operations required. The third is the path length between long-range dependencies in the network. Learning long-range dependencies is a key challenge in many sequence transduction tasks. One key factor affecting the ability to learn such dependencies is the length of the paths forward and backward signals have to traverse in the network. The shorter these paths between any combination of positions in the input and output sequences, the easier it is to learn long-range dependencies [12]. Hence we also compare the maximum path length between any two input and output positions in networks composed of the different layer types. As noted in Table 1, a self-attention layer connects all positions with a constant number of sequentially executed operations, whereas a recurrent layer requires O ( n ) sequential operations. In terms of computational complexity, self-attention layers are faster than recurrent layers when the sequence length n is smaller than the representation dimensionality d , which is most often the case with sentence representations used by state-of-the-art models in machine translations, such as word-piece [38] and byte-pair [31] representations."
+    ],
+    "source": {
+      "owner_id": "6aff790acf901ab5a3db0a92",
+      "document_id": "94604b62-bf36-417c-bdea-7cac7314dfd3",
+      "version": 1,
+      "chunk_id": 22,
+      "paper_title": "Attention Is All You Need",
+      "section": "4 Why Self-Attention",
+      "page_start": 6,
+      "page_end": 6,
+      "source_file": "parsed_papers\\bff25ed9-85e0-4c1a-8157-47fe0930465f.md"
+    }
+  },
+  {
+    "id": "g002",
+    "query": "Compare self-attention and recurrent layers on computational complexity and sequential operations.",
+    "ideal_answer": "Self-attention uses a constant number of sequentially executed operations, while recurrent layers require O(n) sequential operations. In computational complexity, self-attention is faster than recurrent layers when sequence length n is smaller than representation dimensionality d.",
+    "expected_retrieval_context": [
+      "o-German translation development set, newstest2013. Listed perplexities are per-wordpiece, according to our byte-pair encoding, and should not be compared to per-word perplexities."
+    ],
+    "source": {
+      "owner_id": "6aff790acf901ab5a3db0a92",
+      "document_id": "94604b62-bf36-417c-bdea-7cac7314dfd3",
+      "version": 1,
+      "chunk_id": 54,
+      "paper_title": "Attention Is All You Need",
+      "section": "6.2 Model Variations",
+      "page_start": 9,
+      "page_end": 9,
+      "source_file": "parsed_papers\\bff25ed9-85e0-4c1a-8157-47fe0930465f.md"
+    }
+  },
+  {
+    "id": "g003",
+    "query": "Are newstest2013 translation dev-set BPE per-wordpiece perplexities noncomparable to per-word perplexities?",
+    "ideal_answer": "Yes—the newstest2013 BPE per-wordpiece perplexities should not be compared to per-word perplexities.",
+    "expected_retrieval_context": [
+      "Ashish Vaswani ∗ Google Brain avaswani@google.com Noam Shazeer ∗ Google Brain noam@google.com Llion Jones ∗ Google Research llion@google.com Niki Parmar ∗ Google Research nikip@google.com Aidan N. Gomez ∗ † University of Toronto aidan@cs.toronto.edu Jakob Uszkoreit ∗ Google Research usz@google.com Łukasz Kaiser ∗ Google Brain lukaszkaiser@google.com Illia Polosukhin ∗ ‡ illia.polosukhin@gmail.com"
+    ],
+    "source": {
+      "owner_id": "6aff790acf901ab5a3db0a92",
+      "document_id": "94604b62-bf36-417c-bdea-7cac7314dfd3",
+      "version": 1,
+      "chunk_id": 2,
+      "paper_title": "Attention Is All You Need",
+      "section": "Attention Is All You Need",
+      "page_start": 1,
+      "page_end": 1,
+      "source_file": "parsed_papers\\bff25ed9-85e0-4c1a-8157-47fe0930465f.md"
+    }
+  },
+  {
+    "id": "g004",
+    "query": "Confirm if listed perplexities are per-wordpiece per BPE and not comparable to per-word perplexities.",
+    "ideal_answer": "Yes. The listed perplexities are per-wordpiece according to byte-pair encoding (BPE) and should not be compared to per-word perplexities.",
+    "expected_retrieval_context": [
+      "- [5] Kyunghyun Cho, Bart van Merrienboer, Caglar Gulcehre, Fethi Bougares, Holger Schwenk, and Yoshua Bengio. Learning phrase representations using rnn encoder-decoder for statistical machine translation. CoRR , abs/1406.1078, 2014. - [6] Francois Chollet. Xception: Deep learning with depthwise separable convolutions. arXiv preprint arXiv:1610.02357 , 2016. - [7] Junyoung Chung, Çaglar Gülçehre, Kyunghyun Cho, and Yoshua Bengio. Empirical evaluation of gated recurrent neural networks on sequence modeling. CoRR , abs/1412.3555, 2014. - [8] Chris Dyer, Adhiguna Kuncoro, Miguel Ballesteros, and Noah A. Smith. Recurrent neural network grammars. In Proc. of NAACL , 2016. - [9] Jonas Gehring, Michael Auli, David Grangier, Denis Yarats, and Yann N. Dauphin. Convolutional sequence to sequence learning. arXiv preprint arXiv:1705.03122v2 , 2017. - [10] Alex Graves. Generating sequences with recurrent neural networks. arXiv preprint arXiv:1308.0850 , 2013. - [11] Kaiming He, Xiangyu Zhang, Shaoqing Ren, and Jian Sun. Deep residual learning for image recognition. In Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition , pages 770-778, 2016. - [12] Sepp Hochreiter, Yoshua Bengio, Paolo Frasconi, and Jürgen Schmidhuber. Gradient flow in recurrent nets: the difficulty of learning long-term dependencies, 2001. - [13] Sepp Hochreiter and Jürgen Schmidhuber. Long short-term memory. Neural computation , 9(8):1735-1780, 1997. - [14] Zhongqiang Huang and Mary Harper. Self-training PCFG grammars with latent annotations across languages. In Proceedings of the 2009 Conference on Empirical Methods in Natural Language Processing , pages 832-841. ACL, August 2009. - [15] Rafal Jozefowicz, Oriol Vinyals, Mike Schuster, Noam Shazeer, and Yonghui Wu."
+    ],
+    "source": {
+      "owner_id": "6aff790acf901ab5a3db0a92",
+      "document_id": "94604b62-bf36-417c-bdea-7cac7314dfd3",
+      "version": 1,
+      "chunk_id": 239,
+      "paper_title": "Attention Is All You Need",
+      "section": "References",
+      "page_start": 11,
+      "page_end": 11,
+      "source_file": "parsed_papers\\bff25ed9-85e0-4c1a-8157-47fe0930465f.md"
+    }
+  },
+  {
+    "id": "g005",
+    "query": "Compare titles: Alex Graves’ 2013 arXiv preprint vs. Gehring et al.’s 2017 arXiv preprint.",
+    "ideal_answer": "Alex Graves’ 2013 preprint is titled **“Generating sequences with recurrent neural networks.”** Gehring et al.’s 2017 preprint is titled **“Convolutional sequence to sequence learning.”**",
+    "expected_retrieval_context": [
+      "an translation development set, newstest2013. Listed perplexities are per-wordpiece, according to our byte-pair encoding, and should not be compared to per-word perplexities."
+    ],
+    "source": {
+      "owner_id": "6aff790acf901ab5a3db0a92",
+      "document_id": "94604b62-bf36-417c-bdea-7cac7314dfd3",
+      "version": 1,
+      "chunk_id": 60,
+      "paper_title": "Attention Is All You Need",
+      "section": "6.2 Model Variations",
+      "page_start": 9,
+      "page_end": 9,
+      "source_file": "parsed_papers\\bff25ed9-85e0-4c1a-8157-47fe0930465f.md"
+    }
+  }
+]

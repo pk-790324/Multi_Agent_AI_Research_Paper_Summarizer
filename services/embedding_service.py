@@ -135,6 +135,7 @@ class EmbeddingService:
         client = QdrantClient(
             url=qdrant_url,
             api_key=qdrant_api_key,
+            timeout=300
         )
 
         if not client.collection_exists(collection_name):

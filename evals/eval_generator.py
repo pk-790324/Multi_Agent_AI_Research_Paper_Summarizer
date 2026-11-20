@@ -13,6 +13,7 @@ from deepeval.metrics import (
     FaithfulnessMetric,
     AnswerRelevancyMetric,
 )
+from deepeval.evaluate.configs import AsyncConfig
 
 from evals.harness import load_goldens
 
@@ -518,6 +519,7 @@ def run_generator_evaluation(current_user: dict):
     result = evaluate(
         test_cases=test_cases,
         metrics=metrics,
+        async_config=AsyncConfig(run_async=False),
     )
 
     # --------------------------------------

@@ -17,7 +17,7 @@ from qdrant_client.models import (
 )
 
 load_dotenv()
-
+from config import FAITH_CHUNK
 generator_llm =gemma
 
 
@@ -225,7 +225,7 @@ def generate_faithfulness_goldens(current_user: dict):
 
     sample = random.sample(
         chunks,
-        min(2, len(chunks))
+        min(FAITH_CHUNK, len(chunks))
     )
 
     print(f"Sampled chunks: {len(sample)}")

@@ -4,6 +4,7 @@ import html
 from dotenv import load_dotenv
 from judge_llm.judge_llm import judge_llm
 from deepeval import evaluate
+from deepeval.evaluate.configs import AsyncConfig
 from deepeval.test_case import LLMTestCase
 from deepeval.metrics import (
     ContextualRecallMetric,
@@ -121,23 +122,21 @@ def run(retriever, owner_id, golden_path):
     # 5. RUN EVALUATION
 
     result = evaluate(
-        test_cases=test_cases,
-        metrics=metrics,
-        hyperparameters={
-            "retriever": "hybrid",
-            "embedding_model": "your_embedding_model",
-            "chunk_size": 1000,
-            "chunk_overlap": 150,
-            "top_k": 3,
-            "judge_model": JUDGE_MODEL,
-            "golden_set": GOLDEN_PATH
-        }
-    )
+    test_cases=test_cases,
+    metrics=metrics,
+    async_config=AsyncConfig(run_async=False),
+    hyperparameters={
+        "retriever": "hybrid",
+        "embedding_model": "your_embedding_model",
+        "chunk_size": 1000,
+        "chunk_overlap": 150,
+        "top_k": 3,
+        "judge_model": JUDGE_MODEL,
+        "golden_set": GOLDEN_PATH
+    }
+)
 
     return result
-
-
-
 
 
 # evals/eval_retriever.py

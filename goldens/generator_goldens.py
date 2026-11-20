@@ -14,7 +14,7 @@ from qdrant_client.models import (
     FieldCondition,
     MatchValue
 )
-
+from config import GEN_CHUNK
 
 from judge_llm.judge_llm import judge_llm
 load_dotenv()
@@ -138,7 +138,7 @@ def generate_goldens(current_user: dict):
 
     sample = random.sample(
         chunks,
-        min(2, len(chunks))
+        min(GEN_CHUNK, len(chunks))
     )
 
     contexts = [
